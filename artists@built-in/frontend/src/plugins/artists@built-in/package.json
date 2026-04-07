@@ -1,0 +1,8 @@
+{
+    "id": "artists@built-in",
+    "name": "artists",
+    "author": "built-in",
+    "version": "0.0.1",
+    "description": "Get more info about artists",
+    "dependencies": {}
+}

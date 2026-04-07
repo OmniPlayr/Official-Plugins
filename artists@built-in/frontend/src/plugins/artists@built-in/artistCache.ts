@@ -1,0 +1,1 @@
+export const artistCache = new Map<string, any[]>();

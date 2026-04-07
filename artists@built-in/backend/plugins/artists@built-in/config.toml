@@ -1,0 +1,10 @@
+[api]
+music_brainz_base_url = "https://musicbrainz.org/ws/2"
+cover_art_base_url = "https://coverartarchive.org/release-group"
+genius_base_url = "https://api.genius.com"
+
+[api.request]
+user_agent = "OmniPlayr-ArtistLookup/0.0.1"
+
+[cache]
+cache_dir = "user_storage/artists-cache"
