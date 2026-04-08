@@ -21,10 +21,10 @@ def browse_album(
     album: str,
     artist: str = Query(...),
     song: str | None = Query(default=None),
+    type: str | None = Query(default=None),
     no_cache: bool = Query(default=False),
     auth=Depends(verify_auth),
 ):
     if not auth:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    return get_album_info(album, artist_name=artist, song_name=song, no_cache=no_cache)
- 
+    return get_album_info(album, artist_name=artist, song_name=song, release_type=type, no_cache=no_cache)

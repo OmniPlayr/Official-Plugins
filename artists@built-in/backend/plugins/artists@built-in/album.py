@@ -41,7 +41,7 @@ def save_cache(album_name, artist_name, data):
     cache_path(album_name, artist_name).write_text(json.dumps(data, indent=2))
 
 
-def search_album_mb(album_name, artist_name, song_name=None):
+def search_album_mb(album_name, artist_name, song_name=None, release_type=None):
     if song_name:
         r = _get(
             f"{MUSICBRAINZ_BASE}/recording/",
@@ -58,8 +58,8 @@ def search_album_mb(album_name, artist_name, song_name=None):
                 if _name_matches(release.get("title", ""), album_name):
                     return _fetch_full_release_group_mb(rg["id"]), 0.98
 
-    # Search across all release group types (album, EP, single)
-    for type_filter in ["album", "ep", "single"]:
+    type_order = [release_type.lower()] if release_type else ["album", "ep", "single"]
+    for type_filter in type_order:
         r = _get(
             f"{MUSICBRAINZ_BASE}/release-group/",
             params={
@@ -75,7 +75,6 @@ def search_album_mb(album_name, artist_name, song_name=None):
             if _name_matches(g.get("title", ""), album_name):
                 return _fetch_full_release_group_mb(g["id"]), 0.90
 
-    # Fallback: unfiltered search
     r = _get(
         f"{MUSICBRAINZ_BASE}/release-group/",
         params={
@@ -231,7 +230,7 @@ def _merge_songs(mb_tracks, cover_art=None):
     return merged
 
 
-def get_album_info(album_name, artist_name, song_name=None, no_cache=False):
+def get_album_info(album_name, artist_name, song_name=None, release_type=None, no_cache=False):
     start = time.time()
 
     if not no_cache:
@@ -241,7 +240,7 @@ def get_album_info(album_name, artist_name, song_name=None, no_cache=False):
             cached["elapsed_ms"] = round((time.time() - start) * 1000)
             return cached
 
-    mb, accuracy = search_album_mb(album_name, artist_name, song_name=song_name)
+    mb, accuracy = search_album_mb(album_name, artist_name, song_name=song_name, release_type=release_type)
     if not mb:
         return None
 

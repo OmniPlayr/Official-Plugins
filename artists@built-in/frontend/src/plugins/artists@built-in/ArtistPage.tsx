@@ -262,7 +262,10 @@ function ArtistPage() {
                                         <div
                                             key={i}
                                             className="artist-page-release artist-page-release--album"
-                                            onClick={() => navigate(`/artist/${artist}/${release.title}`)}
+                                            onClick={() => {
+                                                sessionStorage.setItem('artist-nav-context', JSON.stringify({ type: release.type }));
+                                                navigate(`/artist/${encodeURIComponent(artist || '')}/${encodeURIComponent(release.title)}`);
+                                            }}
                                         >
                                             <img
                                                 className="artist-page-release-image"

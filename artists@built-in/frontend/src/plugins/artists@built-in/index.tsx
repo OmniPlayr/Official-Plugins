@@ -27,7 +27,7 @@ registerRoute({ path: '/artist/:artist', component: () =>
     isTokenValid()
         ? account_id
         ? <ArtistPage />
-        : <AccountSelect/>
+        : <AccountSelect onAccountSelected={() => {}}/>
         : <Navigate to="/login" />
 });
 
@@ -35,7 +35,7 @@ registerRoute({ path: '/artist/:artist/:album', component: () =>
     isTokenValid()
         ? account_id
         ? <AlbumPage />
-        : <AccountSelect/>
+        : <AccountSelect onAccountSelected={() => {}}/>
         : <Navigate to="/login" />
 });
 
@@ -61,7 +61,7 @@ modify('artists@built-in', 'Player.player-track-artist', el => {
                 ...(album ? { album } : {}),
             })
             const query = params.size ? `?${params}&no_cache=true` : ''
-            api(`/plugin/artist/${artist}${query}`).then(res => {
+            api(`/plugin/artist/${encodeURIComponent(artist)}${query}`).then(res => {
                 artistCache.set(artist, res as any[])
             })
         })
@@ -71,7 +71,7 @@ modify('artists@built-in', 'Player.player-track-artist', el => {
                 song,
                 album: album || undefined,
             }))
-            navigate(`/artist/${artist}`)
+            navigate(`/artist/${encodeURIComponent(artist)}`)
         })
         el.appendChild(artistSpan)
     }
@@ -91,7 +91,7 @@ modify('artists@built-in', 'Player.player-track-artist', el => {
                 ...(artist ? { artist } : {}),
             })
             const query = params.size ? `?${params}&no_cache=true` : ''
-            api(`/plugin/album/${album}${query}`).then(res => {
+            api(`/plugin/album/${encodeURIComponent(artist)}${query}`).then(res => {
                 albumCache.set(album + "_" + artist, res as any[])
             })
         })
@@ -101,7 +101,7 @@ modify('artists@built-in', 'Player.player-track-artist', el => {
                 song,
                 album: album || undefined,
             }))
-            navigate(`/artist/${artist}/${album}`)
+            navigate(`/artist/${encodeURIComponent(artist)}/${encodeURIComponent(album)}`)
         })
         el.appendChild(albumSpan)
     }

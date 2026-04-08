@@ -6,7 +6,7 @@ import unknownArtwork from '../../assets/images/unknown-art.svg';
 import { ArrowBigLeft, Clock } from 'lucide-react';
 import { navigate } from '../../modules/navigate';
 
-async function getAlbum(artist: string, song?: string, album?: string) {
+async function getAlbum(artist: string, song?: string, album?: string, type?: string) {
     if (albumCache.has(album + "_" + artist)) {
         const cached = albumCache.get(album + "_" + artist);
         return { ...cached, client_time: 0 };
@@ -15,6 +15,7 @@ async function getAlbum(artist: string, song?: string, album?: string) {
     const params = new URLSearchParams({
         ...(song ? { song } : {}),
         ...(artist ? { artist } : {}),
+        ...(type ? { type } : {}),
     });
     const query = params.size ? `?${params}` : '';
     const res = await api(`/plugin/album/${album}${query}`) as any;
@@ -77,7 +78,7 @@ function AlbumPage() {
         setLoading(true);
         const ctx = JSON.parse(sessionStorage.getItem('artist-nav-context') || '{}');
         sessionStorage.removeItem('artist-nav-context');
-        getAlbum(artist, ctx.song, album).then(fetched => {
+        getAlbum(artist, ctx.song, album, ctx.type).then(fetched => {
             if (fetched?.client_time) {
                 sessionStorage.setItem('album-last-duration', String(fetched.client_time));
             }
@@ -121,7 +122,7 @@ function AlbumPage() {
             {!loading && data && (<>
             <div className={`artist-sticky-bar ${stickyVisible ? 'visible' : ''}`}>
                 <div className="artist-sticky-bar-left">
-                    <button data-type="secondary" className="artist-page-back-button" onClick={() => navigate(`/artist/${artist}`)}><ArrowBigLeft />Go back to {data.artist}</button>
+                    <button data-type="secondary" className="artist-page-back-button" onClick={() => navigate(`/artist/${encodeURIComponent(artist || '')}`)}><ArrowBigLeft />Go back to {data.artist}</button>
                     <img
                         className="artist-sticky-image"
                         src={data.cover_art || unknownArtwork}
@@ -131,7 +132,7 @@ function AlbumPage() {
                     <p className="artist-sticky-name">{data.title}</p>
                 </div>
             </div>
-            <button data-type="secondary" className="artist-page-back-button" onClick={() => navigate(`/artist/${artist}`)}><ArrowBigLeft />Go back to {data.artist}</button>
+            <button data-type="secondary" className="artist-page-back-button" onClick={() => navigate(`/artist/${encodeURIComponent(artist || '')}`)}><ArrowBigLeft />Go back to {data.artist}</button>
             <div className="artist-page-header no-banner">
                 <img
                     ref={profileImageRef}
@@ -198,7 +199,7 @@ function AlbumPage() {
                                             {song.artists?.map((artist: any, i: number) => (
                                                 <Fragment key={`${i}-${artist}`}>
                                                     {i > 0 && ', '}
-                                                    <span className="artist-page-song-artist" onClick={() => navigate(`/artist/${artist}`)}>
+                                                    <span className="artist-page-song-artist" onClick={() => navigate(`/artist/${encodeURIComponent(artist)}`)}>
                                                         {artist}
                                                     </span>
                                                 </Fragment>
