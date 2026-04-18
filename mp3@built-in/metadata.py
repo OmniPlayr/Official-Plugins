@@ -19,17 +19,17 @@ except ImportError:
 
 print(f"[DEBUG] mutagen available: {_MUTAGEN_OK}", flush=True)
 
-def get_content_type(song_id: str) -> str:
+def get_content_type(song_id: str, account_id: int) -> str:
     try:
-        path = resolve_path(song_id)
+        path = resolve_path(song_id, account_id)
         return EXTENSION_CONTENT_TYPES.get(path.suffix.lower(), "audio/mpeg")
     except Exception:
         return "audio/mpeg"
 
 
-def get_file_size(song_id: str) -> int | None:
+def get_file_size(song_id: str, account_id: int) -> int | None:
     try:
-        return resolve_path(song_id).stat().st_size
+        return resolve_path(song_id, account_id).stat().st_size
     except Exception:
         return None
 
@@ -93,8 +93,8 @@ def _extract_tag(audio, *keys: str) -> str | None:
     return None
 
 
-def get_metadata(song_id: str) -> dict:
-    path = resolve_path(song_id)
+def get_metadata(song_id: str, account_id: int) -> dict:
+    path = resolve_path(song_id, account_id)
 
     base: dict = {
         "filename": path.name,

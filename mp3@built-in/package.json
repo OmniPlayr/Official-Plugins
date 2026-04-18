@@ -1,7 +1,7 @@
 {
     "name": "mp3",
     "author": "built-in",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Play your local mp3 files with OmniPlayr by using the mp3@built-in plugin as a source.",
     "type": "backend",
     "repository": "https://github.com/OmniPlayr/Official-Plugins",
@@ -13,7 +13,7 @@
     "icon": "icon.png",
     "banner": "banner.png",
     "changelog": "CHANGELOG.md",
-    "license": "LICENSE",
+    "license": "",
     "readme": "README.md",
     "contributors": [
         { "name": "wokki20", "avatar": "https://avatars.githubusercontent.com/u/105733478?v=4", "profile": "https://github.com/levkris" }

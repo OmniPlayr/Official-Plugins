@@ -12,8 +12,10 @@ elif isinstance(_cfg_dir, str) and _cfg_dir.isdigit():
 else:
     DEFAULT_CHUNK_SIZE = 0
 
-def get_stream(song_id: str, chunk_size: int = DEFAULT_CHUNK_SIZE):
-    path = resolve_path(song_id)
+def get_stream(song_id: str, account_id: int, chunk_size: int = DEFAULT_CHUNK_SIZE):
+    if chunk_size <= 0:
+        chunk_size = 8192
+    path = resolve_path(song_id, account_id)
 
     if not path.exists() or not path.is_file():
         raise FileNotFoundError(f"File not found: {path}")
