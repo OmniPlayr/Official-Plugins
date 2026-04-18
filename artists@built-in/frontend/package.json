@@ -2,7 +2,7 @@
     "id": "artists@built-in",
     "name": "artists",
     "author": "built-in",
-    "version": "0.0.2",
+    "version": "1.0.0",
     "description": "Get more info about artists",
     "dependencies": {},
     "type": "frontend"

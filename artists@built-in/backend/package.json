@@ -1,21 +1,21 @@
 {
-    "name": "mp3",
+    "name": "artists",
     "author": "built-in",
     "version": "1.0.0",
-    "description": "Play your local mp3 files with OmniPlayr by using the mp3@built-in plugin as a source.",
+    "description": "Get more info about artists",
     "type": "backend",
     "repository": "https://github.com/OmniPlayr/Official-Plugins",
     "homepage": "https://omniplayr.wokki20.nl",
     "pythonDependencies": {
-        "mutagen": ">=1.47",
-        "Pillow": ">=10.0"
+        "requests": ">=2.33.1",
+        "python-dotenv": ">=1.2.2"
     },
-    "icon": "icon.png",
-    "banner": "banner.png",
-    "changelog": "CHANGELOG.md",
-    "license": "LICENSE",
     "readme": "README.md",
     "contributors": [
         { "name": "wokki20", "avatar": "https://avatars.githubusercontent.com/u/105733478?v=4", "profile": "https://github.com/levkris" }
-    ]
+    ],
+    "changelog": "CHANGELOG.md",
+    "license": "LICENSE",
+    "banner": "banner.png",
+    "icon": "icon.png"
 }
