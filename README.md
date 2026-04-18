@@ -24,7 +24,7 @@ Plugins are declared using a `package.json` manifest and may optionally ship wit
 ### [`mp3@built-in`](./mp3@built-in/)
 
 **Type:** Backend  
-**Version:** 1.0.0
+**Version:** 1.1.0
 
 Play your local audio files directly through OmniPlayr. Point the plugin at a folder on your server and it will index and stream everything inside it, no importing or transcoding needed.
 
