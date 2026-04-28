@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import os
 import json
 from pathlib import Path
-from api.helpers.omniplayr import get_plugin_config
+from api.helpers.plugins import get_plugin_config
 
 load_dotenv()
 

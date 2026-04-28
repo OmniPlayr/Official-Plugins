@@ -1,5 +1,5 @@
 from fastapi import Depends, HTTPException, Query
-from api.helpers.omniplayr import api
+from api.helpers.plugins import api
 from api.helpers.server import verify_auth
 from .artist import get_artist_info
 from .album import get_album_info

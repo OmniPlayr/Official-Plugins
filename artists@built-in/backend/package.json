@@ -1,7 +1,7 @@
 {
     "name": "artists",
     "author": "built-in",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Get more info about artists",
     "type": "backend",
     "repository": "https://github.com/OmniPlayr/Official-Plugins",

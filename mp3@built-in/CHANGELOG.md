@@ -1,3 +1,8 @@
+# Version 1.1.1 (2026-04-28)
+
+Fixed
+- Using x-account-token instead of x-account-id
+
 # Version 1.1.0 (2026-04-18)
 
 Added

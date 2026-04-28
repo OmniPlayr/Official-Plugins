@@ -1,6 +1,6 @@
 from fastapi import Depends, HTTPException, Header
-from api.helpers.omniplayr import PluginBase, register, api
-from api.helpers.server import verify_auth
+from api.helpers.plugins import PluginBase, register, api
+from api.helpers.server import verify_auth, get_token_user
 from .paths import resolve_path, EXTENSION_CONTENT_TYPES, MUSIC_DIR
 from .metadata import get_content_type, get_file_size, get_metadata
 from .streaming import get_stream
@@ -30,12 +30,13 @@ class Mp3Plugin(PluginBase):
 
 
 @api.get("/mp3/browse")
-def browse_music(auth=Depends(verify_auth), x_account_id: int = Header(...)):
-    user_dir = MUSIC_DIR / str(x_account_id)
+def browse_music(auth=Depends(verify_auth), x_account_token: str = Header(..., alias="X-Account-Token")):
+    account_id = get_token_user(x_account_token)
+    user_dir = MUSIC_DIR / str(account_id)
     if not user_dir.exists():
         return {"files": []}
     files = [
-        f"{x_account_id}/{f.relative_to(user_dir)}"
+        f"{account_id}/{f.relative_to(user_dir)}"
         for f in user_dir.rglob("*")
         if f.is_file() and f.suffix.lower() in EXTENSION_CONTENT_TYPES
     ]

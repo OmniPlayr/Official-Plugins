@@ -10,6 +10,10 @@ import AccountSelect from '../../AccountSelect';
 import { Navigate } from 'react-router-dom';
 import AlbumPage from './AlbumPage';
 import { albumCache } from './albumCache';
+import { player } from '../../modules/player'
+
+const isMobile = window.innerWidth < 768
+const selector = isMobile ? 'Player-Fullscreen.player-fullscreen-artist' : 'Player.player-track-artist'
 
 function isTokenValid(): boolean {
     const access_expiry = localStorage.getItem('access_token_expires');
@@ -43,7 +47,7 @@ function getCurrentSong(): string | undefined {
     return document.querySelector('.player-track-title')?.textContent?.trim() || undefined;
 }
 
-modify('artists@built-in', 'Player.player-track-artist', el => {
+modify('artists@built-in', selector, async el => {
     const text = el.textContent || ''
     const [artist, album] = text.split(' · ')
     el.textContent = ''
