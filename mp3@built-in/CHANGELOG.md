@@ -1,3 +1,8 @@
+# Version 1.1.2 (2026-04-28)
+
+Fixed
+- Fixed the LICENSE in the package.json
+
 # Version 1.1.1 (2026-04-28)
 
 Fixed
