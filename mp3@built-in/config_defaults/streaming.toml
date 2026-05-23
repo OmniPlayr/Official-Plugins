@@ -1,0 +1,2 @@
+[streaming]
+default_chunk_size = 65_536

@@ -1,0 +1,7 @@
+[api]
+music_brainz_base_url = "str # comment: the base URL for MusicBrainz"
+cover_art_base_url = "str # comment: the base URL for cover art"
+genius_base_url = "str # comment: the base URL for Genius"
+
+[api.request]
+user_agent = "str # comment: the user agent to use for requests"

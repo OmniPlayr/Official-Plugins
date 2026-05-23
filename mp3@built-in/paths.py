@@ -1,5 +1,5 @@
 from pathlib import Path
-from api.helpers.plugins import get_plugin_config
+from api.helpers.plugin_config import get_plugin_config
 
 PLUGIN_KEY = "mp3@built-in"
 

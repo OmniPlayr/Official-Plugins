@@ -1,0 +1,2 @@
+[streaming]
+default_chunk_size = "int # comment: the default chunk size in bytes"

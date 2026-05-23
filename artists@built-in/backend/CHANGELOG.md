@@ -1,3 +1,8 @@
+# Version 1.1.0 (2026-05-23)
+
+Changed
+- The way the new configs work, configs now have defaults and types aswell
+
 # Version 1.0.1 (2026-04-28)
 
 Fixed

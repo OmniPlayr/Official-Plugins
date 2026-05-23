@@ -1,5 +1,0 @@
-[storage]
-mp3_music_dir = "/user_storage/music"
-
-[streaming]
-default_chunk_size = 65_536

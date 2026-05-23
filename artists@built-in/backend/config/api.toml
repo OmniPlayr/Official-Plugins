@@ -5,6 +5,3 @@ genius_base_url = "https://api.genius.com"
 
 [api.request]
 user_agent = "OmniPlayr-ArtistLookup/0.0.1"
-
-[cache]
-cache_dir = "user_storage/artists-cache"
