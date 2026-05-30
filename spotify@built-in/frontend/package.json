@@ -1,0 +1,8 @@
+{
+    "id": "spotify@built-in",
+    "name": "spotify",
+    "author": "built-in",
+    "version": "1.0.0",
+    "description": "Play your Spotify music with OmniPlayr by using this plugin.",
+    "type": "frontend"
+}

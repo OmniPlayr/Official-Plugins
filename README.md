@@ -24,7 +24,7 @@ Plugins are declared using a `package.json` manifest and may optionally ship wit
 ### [`mp3@built-in`](./mp3@built-in/)
 
 **Type:** Backend  
-**Version:** 1.1.0
+**Version:** 1.2.0
 
 Play your local audio files directly through OmniPlayr. Point the plugin at a folder on your server and it will index and stream everything inside it, no importing or transcoding needed.
 
@@ -34,10 +34,23 @@ Supports `.mp3`, `.flac`, `.wav`, `.ogg`, `.m4a`, `.aac`, and `.opus`. Reads ful
 
 ---
 
-### [`artists@built-in`](./artists@built-in/)
+### [`spotify@built-in`](./spotify@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
 **Version:** 1.0.0
+
+Stream Spotify directly inside OmniPlayr. Connect your Spotify account once and OmniPlayr registers itself as a native Spotify playback device. Audio plays through the official Web Playback SDK, metadata is fetched via the Spotify Web API, and tokens are refreshed automatically in the background.
+
+Requires a Spotify Premium account and a Spotify Developer App with a registered redirect URI. Uses PKCE for OAuth so no client secret is ever stored.
+
+[Read more →](./spotify@built-in/backend/README.md)
+
+---
+
+### [`artists@built-in`](./artists@built-in/)
+
+**Type:** Full-stack (Backend + Frontend)  
+**Version:** 1.1.0
 
 Adds artist and album profile pages to OmniPlayr. Click on any artist or album name in the player and get a full profile: biography, genres, discography, tracklists, cover art, and more.
 
