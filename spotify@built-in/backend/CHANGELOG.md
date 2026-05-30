@@ -4,6 +4,10 @@ All notable changes to `spotify@built-in` will be documented here.
 
 ---
 
+## [1.0.2] (frontend) - 2026-05-30
+
+- Fixed a bug where the log in button would double display
+
 ## [1.0.1] (frontend) - 2026-05-30
 
 - Fixed a bug where the log in button would not display in the frontend
