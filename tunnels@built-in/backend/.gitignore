@@ -1,0 +1,4 @@
+.env
+.cloudflared/
+cloudflare-settings.json
+tunnel-settings.json

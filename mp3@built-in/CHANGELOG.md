@@ -1,24 +1,41 @@
-# Version 1.2.0 (2026-05-25)
+# Changelog
 
-Changed
-- The way the new configs work, configs now have defaults and types aswell
+All notable changes to `mp3@built-in` are documented here. This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses [Semantic Versioning](https://semver.org/).
 
-# Version 1.1.2 (2026-04-28)
+## [Unreleased]
 
-Fixed
-- Fixed the LICENSE in the package.json
+## [1.2.1] - 2026-06-21
 
-# Version 1.1.1 (2026-04-28)
+### Changed
 
-Fixed
-- Using x-account-token instead of x-account-id
+- Standardized the changelog format across official plugins.
 
-# Version 1.1.0 (2026-04-18)
+## [1.2.0] - 2026-05-25
 
-Added
-- Support for multiple accounts
+### Changed
 
-# Versions under 1.1.0
+- Added defaults and type definitions to the plugin configuration.
 
-Added
-- Everything from 1.0.0
+## [1.1.2] - 2026-04-28
+
+### Fixed
+
+- Corrected the `license` path in `package.json`.
+
+## [1.1.1] - 2026-04-28
+
+### Fixed
+
+- Replaced `x-account-id` authentication with `x-account-token`.
+
+## [1.1.0] - 2026-04-18
+
+### Added
+
+- Added support for multiple accounts.
+
+## [1.0.0]
+
+### Added
+
+- Initial release.

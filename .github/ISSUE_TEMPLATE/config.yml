@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: OmniPlayr discussions
+    url: https://github.com/orgs/OmniPlayr/discussions
+    about: Ask questions and discuss ideas that are not yet actionable issues.

@@ -1,25 +1,35 @@
 # Changelog
 
-All notable changes to `spotify@built-in` will be documented here.
+All notable changes to `spotify@built-in` are documented here. This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses [Semantic Versioning](https://semver.org/).
 
----
+## [Unreleased]
 
-## [1.0.2] (frontend) - 2026-05-30
+## [1.0.3] - 2026-06-21
 
-- Fixed a bug where the log in button would double display
+### Changed
 
-## [1.0.1] (frontend) - 2026-05-30
+- Standardized the changelog format across official plugins.
 
-- Fixed a bug where the log in button would not display in the frontend
+## [1.0.2] - 2026-05-30
+
+### Fixed
+
+- Frontend: Prevented the login button from appearing twice.
+
+## [1.0.1] - 2026-05-30
+
+### Fixed
+
+- Frontend: Restored the missing login button.
 
 ## [1.0.0] - 2026-05-30
 
-Initial release.
+### Added
 
-- OAuth 2.0 PKCE flow for secure, secret-free authentication
-- Automatic token refresh; sessions stay active without re-authenticating
-- Playback via the Spotify Web Playback SDK; OmniPlayr registers as a native Spotify device
-- Server-side metadata fetching via the Spotify Web API (title, artist, album, album art, duration, track number, year)
-- Album art returned as a base64 data URI for instant display
-- Log In / Log Out entry in the OmniPlayr plugins menu
-- HTTPS guard with a clear error toast when the SDK cannot be loaded in an insecure context
+- Added OAuth 2.0 PKCE authentication without a client secret.
+- Added automatic token refresh for persistent sessions.
+- Added playback through the Spotify Web Playback SDK, registering OmniPlayr as a Spotify device.
+- Added server-side metadata from the Spotify Web API, including title, artist, album, artwork, duration, track number, and year.
+- Added album artwork as base64 data URIs.
+- Added login and logout controls to the plugins menu.
+- Added a clear HTTPS requirement warning when the SDK is used in an insecure context.

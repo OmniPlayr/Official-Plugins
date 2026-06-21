@@ -1,0 +1,10 @@
+[ports]
+frontend_port = "int # comment: Set the port that the tunnel will listen on for the frontend."
+backend_port = "int # comment: Set the port that the tunnel will listen on for the backend."
+
+[host]
+frontend_host = "str # comment: Set the host that the tunnel will listen on for the frontend."
+backend_host = "str # comment: Set the host that the tunnel will listen on for the backend."
+
+[proxy]
+proxy_port = "int # comment: Set the port that the proxy will listen on for the frontend."

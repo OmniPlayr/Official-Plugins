@@ -1,0 +1,45 @@
+{
+    "menu.manage": "Tunnels beheren",
+
+    "page.title": "Tunnels",
+    "page.description": "Geef OmniPlayr een veilig openbaar adres. Elke tunnel heeft een eigen configuratie en levenscyclus.",
+    "page.running_count_one": "{{count}} actief",
+    "page.running_count_other": "{{count}} actief",
+
+    "status.running": "Actief",
+    "status.stopped": "Gestopt",
+    "status.setup_needed": "Configuratie vereist",
+
+    "controls.auto_start": "Automatisch starten",
+    "controls.edit_setup": "Configuratie bewerken",
+    "controls.setup": "Configureren",
+    "controls.stop": "Stoppen",
+    "controls.start": "Starten",
+
+    "popup.title.edit": "{{name}} bewerken",
+    "popup.title.setup": "{{name}} configureren",
+    "popup.subtitle": "Voeg de inloggegevens voor deze tunnel toe. OmniPlayr start de tunnel zodra de configuratie is voltooid.",
+    "popup.open_dashboard": "Dashboard van {{name}} openen",
+    "popup.login_first": "Log eerst in bij {{name}}",
+    "popup.login_first.desc": "Een Cloudflare-pagina wordt in een nieuw tabblad geopend. Kies het domein dat OmniPlayr moet gebruiken en kom daarna hier terug.",
+    "popup.login": "Inloggen bij {{name}}",
+    "popup.waiting_login": "Wachten op inloggen…",
+    "popup.starting": "{{name}} wordt gestart…",
+    "popup.starting.desc": "De tunnel en DNS-route worden aangemaakt. Dit kan even duren.",
+    "popup.replace_value": "Voer een nieuwe waarde in om de opgeslagen waarde te vervangen",
+    "popup.enter_value": "Plak je {{name}}",
+    "popup.start_auto": "Automatisch starten",
+    "popup.start_auto.desc": "Breng deze tunnel online wanneer OmniPlayr wordt gestart.",
+    "popup.cancel": "Annuleren",
+    "popup.save_start": "Opslaan en starten",
+
+    "success.setup": "{{name}} is geconfigureerd en actief.",
+
+    "error.load_tunnels": "Tunnels konden niet worden geladen.",
+    "error.login": "Inloggen bij {{name}} kon niet worden gestart.",
+    "error.fill_details": "Vul eerst de vereiste configuratiegegevens in.",
+    "error.finish_setup": "De configuratie van {{name}} kon niet worden voltooid. Controleer het token en probeer het opnieuw.",
+    "error.start": "{{name}} kon niet worden gestart.",
+    "error.stop": "{{name}} kon niet worden gestopt.",
+    "error.save_auto_start": "Automatisch starten kon niet worden opgeslagen.",
+}

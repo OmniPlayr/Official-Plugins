@@ -1,21 +1,23 @@
 {
-    "name": "mp3",
+    "id": "tunnels@built-in",
+    "name": "tunnels",
     "author": "built-in",
-    "version": "1.2.1",
-    "description": "Play your local mp3 files with OmniPlayr by using the mp3@built-in plugin as a source.",
+    "version": "1.0.1",
+    "description": "Let your OmniPlayr server run through a secure tunnel",
     "type": "backend",
     "repository": "https://github.com/OmniPlayr/Official-Plugins",
     "homepage": "https://omniplayr.wokki20.nl",
     "pythonDependencies": {
-        "mutagen": ">=1.47",
-        "Pillow": ">=10.0"
+        "ngrok": ">=1.7.0",
+        "aiohttp": ">=3.14.1",
+        "python-dotenv": ">=1.0.0"
     },
-    "icon": "icon.png",
-    "banner": "banner.png",
-    "changelog": "CHANGELOG.md",
-    "license": "LICENSE",
     "readme": "README.md",
     "contributors": [
         { "name": "wokki20", "avatar": "https://avatars.githubusercontent.com/u/105733478?v=4", "profile": "https://github.com/levkris" }
-    ]
+    ],
+    "changelog": "CHANGELOG.md",
+    "license": "LICENSE",
+    "banner": "banner.png",
+    "icon": "icon.png"
 }

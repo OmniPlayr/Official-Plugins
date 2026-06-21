@@ -24,7 +24,7 @@ Plugins are declared using a `package.json` manifest and may optionally ship wit
 ### [`mp3@built-in`](./mp3@built-in/)
 
 **Type:** Backend  
-**Version:** 1.2.0
+**Version:** 1.2.1
 
 Play your local audio files directly through OmniPlayr. Point the plugin at a folder on your server and it will index and stream everything inside it, no importing or transcoding needed.
 
@@ -37,7 +37,7 @@ Supports `.mp3`, `.flac`, `.wav`, `.ogg`, `.m4a`, `.aac`, and `.opus`. Reads ful
 ### [`spotify@built-in`](./spotify@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** 1.0.0
+**Version:** Backend 1.0.3 / Frontend 1.0.2
 
 Stream Spotify directly inside OmniPlayr. Connect your Spotify account once and OmniPlayr registers itself as a native Spotify playback device. Audio plays through the official Web Playback SDK, metadata is fetched via the Spotify Web API, and tokens are refreshed automatically in the background.
 
@@ -50,7 +50,7 @@ Requires a Spotify Premium account and a Spotify Developer App with a registered
 ### [`artists@built-in`](./artists@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** 1.1.0
+**Version:** Backend 1.1.1 / Frontend 1.0.0
 
 Adds artist and album profile pages to OmniPlayr. Click on any artist or album name in the player and get a full profile: biography, genres, discography, tracklists, cover art, and more.
 
@@ -60,9 +60,29 @@ Data is pulled from [MusicBrainz](https://musicbrainz.org), [Genius](https://gen
 
 ---
 
+### [`tunnels@built-in`](./tunnels@built-in/)
+
+**Type:** Full-stack (Backend + Frontend)
+
+**Version:** Backend 1.0.1 / Frontend 1.0.0
+
+Give an OmniPlayr server a secure public HTTPS address and manage it from the admin UI. The plugin supports both [ngrok](https://ngrok.com) and [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/), including setup, start/stop controls, status and public URL reporting, and optional automatic startup.
+
+ngrok uses an account auth token and provides an assigned public address. Cloudflare uses browser authorization, creates the tunnel and DNS route, and lets you choose a subdomain on a Cloudflare-managed domain. The built-in reverse proxy routes frontend, API, WebSocket, and terminal traffic through the same address.
+
+[Read more](./tunnels@built-in/backend/README.md)
+
+---
+
 ## Contributing
 
-Have a plugin idea or a fix to submit? PRs are welcome. Make sure your plugin follows the existing structure: a `package.json` manifest at the root of the plugin folder, a `config.toml` for any configurable values, and a `README.md` describing what it does.
+Have a plugin idea or a fix to submit? PRs are welcome. Make sure each backend or frontend package has a valid `package.json`, configuration defaults for configurable values, and a `README.md` describing what it does. Pull requests and issues use guided templates so version bumps, testing, documentation, and secret handling are not forgotten. Read [CONTRIBUTING.md](./CONTRIBUTING.md) and the [plugin publishing guide](https://omniplayr.wokki20.nl/docs/plugins/publishing.html) for the complete workflow and packaging rules.
+
+### Automatic registry publishing
+
+Every push to `main` that changes a plugin package automatically publishes the affected backend and/or frontend package to the OmniPlayr registry. The workflow stages nested full-stack packages in a folder matching their manifest `id`, as required by the registry, and then runs `omniplayr publish`.
+
+Repository maintainers need to create a GitHub environment named `plugin-registry` and add an encrypted `OMNIPLAYR_ACCESS_TOKEN` secret. Create the token in [registry token settings](https://omniplayr.wokki20.nl/packages/settings/tokens) with only the `packages:write` scope. Plugin versions must be bumped before merging an update. A manual workflow run can publish every tracked plugin package when needed.
 
 If you notice missing or incorrect data in artist or album profiles, the best way to help is to submit corrections directly to [MusicBrainz](https://musicbrainz.org) or [Genius](https://genius.com). Since profiles are sourced directly from those databases, your contributions will show up automatically.
 

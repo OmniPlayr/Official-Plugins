@@ -1,0 +1,42 @@
+name: Publish changed plugins
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "*@*/**"
+      - ".github/scripts/publish-changed-plugins.ps1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-plugins
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: plugin-registry
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install OmniPlayr CLI
+        run: npm install --global @omniplayr/cli@^1.3.0
+
+      - name: Publish changed packages
+        shell: pwsh
+        env:
+          OMNIPLAYR_ACCESS_TOKEN: ${{ secrets.OMNIPLAYR_ACCESS_TOKEN }}
+          PUBLISH_ALL: ${{ github.event_name == 'workflow_dispatch' }}
+        run: >-
+          ./.github/scripts/publish-changed-plugins.ps1
+          -Before "${{ github.event.before }}"
+          -After "${{ github.sha }}"

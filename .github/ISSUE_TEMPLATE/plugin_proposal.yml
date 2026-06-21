@@ -1,0 +1,38 @@
+name: New plugin proposal
+description: Propose a new plugin for the official collection.
+title: "[Plugin proposal]: "
+labels: [plugin-proposal]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Proposed plugin ID
+      placeholder: "example@built-in"
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: Package type
+      options: [Backend, Frontend, Full-stack]
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case
+      description: What does the plugin enable, and who benefits?
+    validations:
+      required: true
+  - type: textarea
+    id: design
+    attributes:
+      label: Suggested design
+      description: Mention APIs, services, permissions, or dependencies it may need.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked that this is not already covered by an existing plugin or proposal.
+          required: true

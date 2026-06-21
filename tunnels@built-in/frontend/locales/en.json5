@@ -1,0 +1,45 @@
+{
+    "menu.manage": "Manage tunnels",
+
+    "page.title": "Tunnels",
+    "page.description": "Give OmniPlayr a secure public address. Each tunnel has its own setup and lifecycle.",
+    "page.running_count_one": "{{count}} running",
+    "page.running_count_other": "{{count}} running",
+
+    "status.running": "Running",
+    "status.stopped": "Stopped",
+    "status.setup_needed": "Setup needed",
+
+    "controls.auto_start": "Auto-start",
+    "controls.edit_setup": "Edit setup",
+    "controls.setup": "Setup",
+    "controls.stop": "Stop",
+    "controls.start": "Start",
+
+    "popup.title.edit": "Edit {{name}}",
+    "popup.title.setup": "Set up {{name}}",
+    "popup.subtitle": "Add the credentials for this tunnel. OmniPlayr will start it when setup is complete.",
+    "popup.open_dashboard": "Open {{name}} dashboard",
+    "popup.login_first": "Log in to {{name}} first",
+    "popup.login_first.desc": "A Cloudflare page will open in a new tab. Choose the domain you want OmniPlayr to use, then return here.",
+    "popup.login": "Log in to {{name}}",
+    "popup.waiting_login": "Waiting for login…",
+    "popup.starting": "Starting {{name}}…",
+    "popup.starting.desc": "Creating the tunnel and DNS route. This can take a moment.",
+    "popup.replace_value": "Enter a new value to replace the saved one",
+    "popup.enter_value": "Paste your {{name}}",
+    "popup.start_auto": "Start automatically",
+    "popup.start_auto.desc": "Bring this tunnel online whenever OmniPlayr starts.",
+    "popup.cancel": "Cancel",
+    "popup.save_start": "Save & start",
+
+    "success.setup": "{{name}} is set up and running.",
+
+    "error.load_tunnels": "Could not load tunnels.",
+    "error.login": "Could not start {{name}} login.",
+    "error.fill_details": "Fill in the required setup details first.",
+    "error.finish_setup": "Could not finish {{name}} setup. Check the token and try again.",
+    "error.start": "Could not start {{name}}.",
+    "error.stop": "Could not stop {{name}}.",
+    "error.save_auto_start": "Could not save auto-start.",
+}

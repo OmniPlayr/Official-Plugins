@@ -1,0 +1,55 @@
+name: Bug report
+description: Report something that is broken in an official plugin.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: dropdown
+    id: plugin
+    attributes:
+      label: Plugin
+      options:
+        - artists@built-in
+        - mp3@built-in
+        - spotify@built-in
+        - tunnels@built-in
+        - Other or unknown
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Include the plugin and OmniPlayr versions.
+      placeholder: "Plugin 1.0.0, OmniPlayr 1.2.3"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Tell us what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Remove access tokens, passwords, personal paths, and other secrets.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched for an existing issue and removed sensitive information.
+          required: true

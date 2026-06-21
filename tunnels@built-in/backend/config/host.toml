@@ -1,0 +1,10 @@
+[ports]
+frontend_port = 8223
+backend_port = 8224
+
+[host]
+frontend_host = "frontend"
+backend_host = "backend"
+
+[proxy]
+proxy_port = 9000
