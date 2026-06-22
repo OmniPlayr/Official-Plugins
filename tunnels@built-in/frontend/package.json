@@ -1,8 +1,8 @@
 {
   "id": "tunnels@built-in",
-  "name": "Tunnels",
+  "name": "tunnels",
   "author": "built-in",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Set up and manage secure public tunnels for OmniPlayr.",
   "type": "frontend"
 }
