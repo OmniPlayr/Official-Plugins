@@ -232,6 +232,172 @@ def get_playlist(
 
 expose("spotify@built-in", "get_playlist", get_playlist)
 
+
+def _track_metadata(track: dict) -> dict:
+    album = track.get("album") or {}
+    artists = track.get("artists") or []
+    images = album.get("images") or []
+    album_art = images[0].get("url") if images and isinstance(images[0], dict) else None
+    release_date = album.get("release_date") or ""
+    duration_ms = track.get("duration_ms")
+    return {
+        "title": track.get("name"),
+        "artist": ", ".join(a.get("name", "") for a in artists if a.get("name")) or None,
+        "album": album.get("name"),
+        "album_artist": ", ".join(
+            a.get("name", "") for a in (album.get("artists") or []) if a.get("name")
+        ) or None,
+        "year": release_date[:4] or None,
+        "track": str(track["track_number"]) if track.get("track_number") is not None else None,
+        "duration": duration_ms / 1000.0 if duration_ms is not None else None,
+        "album_art": album_art,
+        "explicit": bool(track.get("explicit", False)),
+    }
+
+
+def get_metadata(user_id: int, song_id: str, timeout_seconds: int = 10) -> dict:
+    """Return Spotify track metadata through the inter-plugin API."""
+    token = get_access_token(user_id)
+    if not token:
+        return {}
+    try:
+        response = http_requests.get(
+            f"https://api.spotify.com/v1/tracks/{song_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=timeout_seconds,
+        )
+    except http_requests.RequestException:
+        return {}
+    return _track_metadata(response.json()) if response.ok else {}
+
+
+expose("spotify@built-in", "get_metadata", get_metadata)
+
+
+def iter_playlist_songs(
+    user_id: int,
+    playlist_id: str,
+    page_size: int = 50,
+    max_pages: int = 100,
+    request_delay_ms: int = 250,
+    timeout_seconds: int = 10,
+    local_user_id: int | None = None,
+    local_user_name: str | None = None,
+    local_user_picture: str | None = None,
+):
+    """Yield normalized songs page-by-page so callers can stream them immediately."""
+    token = get_access_token(user_id)
+    if not token:
+        raise RuntimeError("Spotify access token is unavailable")
+
+    page_size = min(100, max(1, int(page_size)))
+    max_pages = max(1, int(max_pages))
+    request_delay = max(0, int(request_delay_ms)) / 1000
+    offset = 0
+    position = 0
+    connected_user = get_spotify_profile(user_id, timeout_seconds) or {}
+    connected_spotify_id = connected_user.get("id")
+    contributor_cache: dict[str, dict] = {}
+
+    def contributor(spotify_user: dict) -> dict:
+        spotify_user_id = spotify_user.get("id")
+        if not spotify_user_id:
+            return {"added_by": None, "added_by_name": None, "added_by_picture": None}
+
+        if local_user_id is not None and spotify_user_id == connected_spotify_id:
+            images = connected_user.get("images") or []
+            spotify_picture = images[0].get("url") if images and isinstance(images[0], dict) else None
+            return {
+                "added_by": local_user_id,
+                "added_by_name": local_user_name or connected_user.get("display_name"),
+                "added_by_picture": local_user_picture or spotify_picture,
+            }
+
+        cached = contributor_cache.get(spotify_user_id)
+        if cached is not None:
+            return cached
+
+        profile = spotify_user
+        try:
+            profile_response = http_requests.get(
+                f"https://api.spotify.com/v1/users/{spotify_user_id}",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=timeout_seconds,
+            )
+            if profile_response.ok:
+                profile = profile_response.json()
+        except http_requests.RequestException:
+            pass
+
+        images = profile.get("images") or []
+        picture = images[0].get("url") if images and isinstance(images[0], dict) else None
+        resolved = {
+            "added_by": None,
+            "added_by_name": profile.get("display_name") or spotify_user.get("display_name"),
+            "added_by_picture": picture,
+        }
+        contributor_cache[spotify_user_id] = resolved
+        return resolved
+
+    for _ in range(max_pages):
+        while True:
+            try:
+                response = http_requests.get(
+                    f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks",
+                    headers={"Authorization": f"Bearer {token}"},
+                    params={"limit": page_size, "offset": offset},
+                    timeout=timeout_seconds,
+                )
+            except http_requests.RequestException as error:
+                log(f"Spotify playlist tracks request failed: {error}", "warning")
+                raise RuntimeError("Spotify playlist tracks request failed") from error
+
+            if response.status_code != 429:
+                break
+            try:
+                retry_after = max(1, int(float(response.headers.get("Retry-After", "1"))))
+            except ValueError:
+                retry_after = 1
+            log(f"Spotify playlist tracks request rate limited; retrying in {retry_after}s", "warning")
+            time.sleep(retry_after)
+
+        if not response.ok:
+            log(
+                f"Spotify playlist tracks request failed: status={response.status_code} "
+                f"playlist={playlist_id!r} offset={offset}",
+                "warning",
+            )
+            raise RuntimeError(f"Spotify playlist tracks request failed with status {response.status_code}")
+
+        page = response.json()
+        items = page.get("items") or []
+        for item in items:
+            track = (item or {}).get("track") or {}
+            song_id = track.get("id")
+            if not song_id or track.get("type") != "track":
+                continue
+            added_by = contributor((item or {}).get("added_by") or {})
+            yield {
+                "source_type": "spotify",
+                "song_id": song_id,
+                "path": None,
+                "position": position,
+                "added_at": (item or {}).get("added_at"),
+                **added_by,
+                "spotify_uri": track.get("uri"),
+                "metadata": _track_metadata(track),
+            }
+            position += 1
+
+        if not page.get("next") or not items:
+            break
+        offset += len(items)
+        if request_delay:
+            time.sleep(request_delay)
+
+
+expose("spotify@built-in", "iter_playlist_songs", iter_playlist_songs)
+
 class SetupRequest(BaseModel):
     client_id: str
 

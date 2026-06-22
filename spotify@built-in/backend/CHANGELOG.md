@@ -4,6 +4,14 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-06-22
+
+### Changed
+- Moved all of the metadata logic to routes.py
+
+### Added
+- Exposed the metadata function to other plugins
+
 ## [1.1.0] - 2026-06-22
 
 ### Added
