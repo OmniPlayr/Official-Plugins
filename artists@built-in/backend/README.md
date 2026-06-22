@@ -77,7 +77,7 @@ genius_base_url = "https://api.genius.com"
 user_agent = "OmniPlayr-ArtistLookup/0.0.1"
 
 [cache]
-cache_dir = "user_storage/artists-cache"
+cache_dir = "/user_storage/artists-cache"
 ```
 
 | Key | Description |

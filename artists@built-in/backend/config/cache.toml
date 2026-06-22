@@ -1,2 +1,2 @@
 [cache]
-cache_dir = "user_storage/artists-cache"
+cache_dir = "/user_storage/artists-cache"

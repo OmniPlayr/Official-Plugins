@@ -4,6 +4,23 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-06-22
+
+### Added
+
+- Added playlist collection and individual playlist APIs for built-in plugin integrations.
+- Added private and collaborative playlist read permissions.
+- Added cached Spotify profile identity for matching playlist owners to OmniPlayr accounts.
+
+### Changed
+
+- Added in-memory access-token caching to reduce database work during playlist pagination.
+- Improved playlist pagination diagnostics and request efficiency.
+
+### Fixed
+
+- Spotify playlist rate limits now honor `Retry-After` before retrying.
+
 ## [1.0.3] - 2026-06-21
 
 ### Changed

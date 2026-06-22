@@ -63,6 +63,9 @@ def setup():
                 "access_token": "TEXT",
                 "refresh_token": "TEXT",
                 "token_expiry": "BIGINT",
+                "spotify_user_id": "TEXT",
+                "spotify_user_name": "TEXT",
+                "spotify_user_avatar": "TEXT",
             }
         }
     )

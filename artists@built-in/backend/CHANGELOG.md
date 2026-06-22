@@ -4,6 +4,12 @@ All notable changes to `artists@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-06-22
+
+### Fixed
+
+- Moved the artist and album cache to the root-mounted `/user_storage/artists-cache` directory.
+
 ## [1.1.1] - 2026-06-21
 
 ### Changed
