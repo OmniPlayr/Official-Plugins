@@ -1,0 +1,19 @@
+{
+    "name": "playlists",
+    "author": "built-in",
+    "version": "beta-0.1.0",
+    "description": "Create, edit and listen to playlists for your OmniPlayr server.",
+    "type": "backend",
+    "repository": "https://github.com/OmniPlayr/Official-Plugins",
+    "homepage": "https://omniplayr.wokki20.nl",
+    "pythonDependencies": {
+    },
+    "icon": "icon.png",
+    "banner": "banner.png",
+    "changelog": "CHANGELOG.md",
+    "license": "LICENSE",
+    "readme": "README.md",
+    "contributors": [
+        { "name": "wokki20", "avatar": "https://avatars.githubusercontent.com/u/105733478?v=4", "profile": "https://github.com/levkris" }
+    ]
+}

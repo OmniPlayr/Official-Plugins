@@ -1,0 +1,35 @@
+{
+    "home.title": "Home",
+    "home.description.1": "What are you listening to today, {{name}}?",
+    "home.description.2": "What's playing in your headphones today, {{name}}?",
+    "home.description.3": "Found any great songs lately, {{name}}?",
+    "home.description.4": "What's the soundtrack of your day, {{name}}?",
+    "home.description.5": "Which artist has your attention today, {{name}}?",
+    "home.description.6": "Ready to discover some new music today, {{name}}?",
+
+    "home.playlist.createdFor": "Created for {{name}}",
+    "home.playlist.createdBy": "Created by {{name}}",
+
+    "playlists.publicity.private": "Private Playlist",
+    "playlists.publicity.public": "Public Playlist",
+
+    "playlists.permissions.owner": "Owner",
+    "playlists.permissions.collaborator": "Collaborator",
+    "playlists.permissions.admin": "Admin",
+
+    "playlists.playlist.search.placeholder": "Search In Playlist",
+
+    "home.playlists.title.local": "My Playlists",
+    "home.playlists.title.spotify": "Spotify Playlists",
+
+    "playlists.playlist.songs.table.title": "Title",
+    "playlists.playlist.songs.table.artist": "Artist",
+    "playlists.playlist.songs.table.album": "Album",
+    "playlists.playlist.songs.table.date-added": "Date Added",
+
+    "playlists.playlist.context.queue": "Add to Queue",
+    "playlists.playlist.context.share": "Share",
+    "playlists.playlist.context.copy-link": "Copy Link",
+    "playlists.playlist.context.copy-embed": "Copy Embed",
+    "playlists.playlist.context.copied": "Copied",
+}

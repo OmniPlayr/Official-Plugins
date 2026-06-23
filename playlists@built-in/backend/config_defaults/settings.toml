@@ -1,0 +1,32 @@
+[cache]
+enabled = true
+cache_dir = "user_storage/playlist-cache"
+refresh_in_background = true
+song_ttl_seconds = 300
+
+[streaming]
+enabled = true
+
+[providers]
+default_services = "local,spotify"
+check_spotify_playlists = true
+
+[spotify]
+load_all_playlists = true
+request_page_size = 50
+display_batch_size = 10
+display_batch_delay_ms = 50
+max_playlist_pages = 100
+song_page_size = 50
+song_display_batch_size = 20
+song_display_batch_delay_ms = 10
+song_request_delay_ms = 250
+max_song_pages = 100
+
+[pagination]
+default_limit = 40
+default_offset = 0
+max_limit = 50
+
+[requests]
+timeout_seconds = 10

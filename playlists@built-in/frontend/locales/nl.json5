@@ -1,0 +1,35 @@
+{
+    "home.title": "Home",
+    "home.description.1": "Waar luister je vandaag naar, {{name}}?",
+    "home.description.2": "Welke nummers staan vandaag op repeat, {{name}}?",
+    "home.description.3": "Heb je nog leuke muziek ontdekt, {{name}}?",
+    "home.description.4": "Wat is vandaag jouw soundtrack, {{name}}?",
+    "home.description.5": "Naar welke artiest luister jij vandaag, {{name}}?",
+    "home.description.6": "Tijd voor wat muziek, {{name}}! Wat staat er op?",
+
+    "home.playlist.createdFor": "Gemaakt voor {{name}}",
+    "home.playlist.createdBy": "Gemaakt door {{name}}",
+
+    "playlists.publicity.private": "Privéplaylist",
+    "playlists.publicity.public": "Openbare playlist",
+
+    "playlists.permissions.owner": "Eigenaar",
+    "playlists.permissions.collaborator": "Medewerker",
+    "playlists.permissions.admin": "Beheerder",
+
+    "playlists.playlist.search.placeholder": "Zoeken in playlist",
+
+    "home.playlists.title.local": "Mijn playlists",
+    "home.playlists.title.spotify": "Spotify-playlists",
+
+    "playlists.playlist.songs.table.title": "Titel",
+    "playlists.playlist.songs.table.artist": "Artiest",
+    "playlists.playlist.songs.table.album": "Album",
+    "playlists.playlist.songs.table.date-added": "Toegevoegd op",
+
+    "playlists.playlist.context.queue": "Toevoegen aan wachtrij",
+    "playlists.playlist.context.share": "Delen",
+    "playlists.playlist.context.copy-link": "Link kopiëren",
+    "playlists.playlist.context.copy-embed": "Embed kopiëren",
+    "playlists.playlist.context.copied": "Gekopieerd",
+}
