@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Copy, X } from 'lucide-react';
+import type { KeyboardEvent } from 'react';
+import { Check, Copy } from 'lucide-react';
 import { consumeConnectedParam, getStatus, saveCredentials, startAuth } from './auth';
 import { getConfig } from '../../modules/config';
 import './SoundCloudSetup.css';
@@ -18,7 +19,6 @@ export default function SoundCloudSetup({ onDone }: Props) {
     const [saving, setSaving] = useState(false);
     const [connecting, setConnecting] = useState(false);
     const [copied, setCopied] = useState(false);
-    const [closing, setClosing] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const apiUrl = getConfig('api.apiUrl');
@@ -60,8 +60,7 @@ export default function SoundCloudSetup({ onDone }: Props) {
     }, [step]);
 
     function close() {
-        setClosing(true);
-        setTimeout(onDone, 200);
+        onDone();
     }
 
     async function handleSave() {
@@ -108,7 +107,7 @@ export default function SoundCloudSetup({ onDone }: Props) {
         setTimeout(() => setCopied(false), 2000);
     }
 
-    function handleKeyDown(e: React.KeyboardEvent) {
+    function handleKeyDown(e: KeyboardEvent) {
         if (e.key === 'Enter') handleSave();
         if (e.key === 'Escape') close();
     }
@@ -116,36 +115,25 @@ export default function SoundCloudSetup({ onDone }: Props) {
     if (step === 'loading') return null;
 
     return (
-        <div className={`sc-overlay${closing ? ' sc-overlay--out' : ''}`} onClick={e => e.target === e.currentTarget && close()}>
-            <div className="sc-card" role="dialog" aria-modal="true">
-                <div className="sc-header">
-                    <div className="sc-logo">
-                        <span className="sc-logo__mark">SC</span>
-                        <span className="sc-logo__name">SoundCloud</span>
-                    </div>
-                    <button className="sc-close" onClick={close} aria-label="Close">
-                        <X size={16} />
-                    </button>
+        <div className="sc-setup">
+            {(step === 'credentials' || step === 'connect') && (
+                <div className="sc-steps">
+                    <div className={`sc-step-dot ${step === 'credentials' ? 'sc-step-dot--active' : 'sc-step-dot--done'}`} />
+                    <div className={`sc-step-dot ${step === 'connect' ? 'sc-step-dot--active' : ''}`} />
                 </div>
+            )}
 
-                {(step === 'credentials' || step === 'connect') && (
-                    <div className="sc-steps">
-                        <div className={`sc-step-dot ${step === 'credentials' ? 'sc-step-dot--active' : 'sc-step-dot--done'}`} />
-                        <div className={`sc-step-dot ${step === 'connect' ? 'sc-step-dot--active' : ''}`} />
-                    </div>
+            <div className="sc-body">
+                {step === 'error' && (
+                    <>
+                        <p className="sc-title">Something went wrong</p>
+                        <p className="sc-error-msg">{errorMsg}</p>
+                        <div className="sc-footer">
+                            <button className="sc-btn sc-btn--ghost" onClick={close}>Close</button>
+                            <button className="sc-btn sc-btn--secondary" onClick={() => setStep('credentials')}>Start over</button>
+                        </div>
+                    </>
                 )}
-
-                <div className="sc-body">
-                    {step === 'error' && (
-                        <>
-                            <p className="sc-title">Something went wrong</p>
-                            <p className="sc-error-msg">{errorMsg}</p>
-                            <div className="sc-footer">
-                                <button className="sc-btn sc-btn--ghost" onClick={close}>Close</button>
-                                <button className="sc-btn sc-btn--secondary" onClick={() => setStep('credentials')}>Start over</button>
-                            </div>
-                        </>
-                    )}
 
                     {step === 'success' && (
                         <div className="sc-success">
@@ -160,12 +148,12 @@ export default function SoundCloudSetup({ onDone }: Props) {
                     {step === 'credentials' && (
                         <>
                             <p className="sc-title">Connect SoundCloud</p>
-                            <p className="sc-desc">Create or open a SoundCloud developer app, add the redirect URI below, then paste the app credentials.</p>
+                            <p className="sc-desc">Public SoundCloud URLs can play without connecting. Connect an account only if you want private playlists and account library access. SoundCloud currently requires Artist Pro for app registration.</p>
 
                             <div className="sc-instructions">
                                 <div className="sc-step">
                                     <span className="sc-step__num">1</span>
-                                    <span>Go to <a href="https://developers.soundcloud.com" target="_blank" rel="noreferrer">developers.soundcloud.com</a> and create an app</span>
+                                    <span>Go to <a href="https://soundcloud.com/you/apps" target="_blank" rel="noreferrer">soundcloud.com/you/apps</a> and create an app</span>
                                 </div>
                                 <div className="sc-step">
                                     <span className="sc-step__num">2</span>
@@ -223,25 +211,24 @@ export default function SoundCloudSetup({ onDone }: Props) {
                         </>
                     )}
 
-                    {step === 'connect' && (
-                        <>
-                            <p className="sc-title">Log in with SoundCloud</p>
-                            <p className="sc-desc">Credentials saved. Authorize OmniPlayr with SoundCloud to load private playlists and track metadata.</p>
-                            <div className="sc-uri-box">
-                                <code>{redirectUri}</code>
-                                <button className={`sc-copy-btn${copied ? ' sc-copy-btn--copied' : ''}`} onClick={handleCopy} title="Copy">
-                                    {copied ? <Check className="copy-icon copied" /> : <Copy className="copy-icon" />}
-                                </button>
-                            </div>
-                            <div className="sc-footer">
-                                <button className="sc-btn sc-btn--ghost" onClick={() => setStep('credentials')}>Back</button>
-                                <button className="sc-btn sc-btn--soundcloud" onClick={handleConnect} disabled={connecting}>
-                                    {connecting ? 'Redirecting...' : 'Log in with SoundCloud'}
-                                </button>
-                            </div>
-                        </>
-                    )}
-                </div>
+                {step === 'connect' && (
+                    <>
+                        <p className="sc-title">Log in with SoundCloud</p>
+                        <p className="sc-desc">Credentials saved. Authorize OmniPlayr with SoundCloud to load private playlists and track metadata.</p>
+                        <div className="sc-uri-box">
+                            <code>{redirectUri}</code>
+                            <button className={`sc-copy-btn${copied ? ' sc-copy-btn--copied' : ''}`} onClick={handleCopy} title="Copy">
+                                {copied ? <Check className="copy-icon copied" /> : <Copy className="copy-icon" />}
+                            </button>
+                        </div>
+                        <div className="sc-footer">
+                            <button className="sc-btn sc-btn--ghost" onClick={() => setStep('credentials')}>Back</button>
+                            <button className="sc-btn sc-btn--soundcloud" onClick={handleConnect} disabled={connecting}>
+                                {connecting ? 'Redirecting...' : 'Log in with SoundCloud'}
+                            </button>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );

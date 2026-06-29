@@ -12,37 +12,46 @@ You can find this plugin at:
 Once connected to your SoundCloud account, `soundcloud@built-in` will:
 
 - Add SoundCloud as an OmniPlayr playback source
+- Play public SoundCloud track URLs without a SoundCloud app or Pro account
 - Play SoundCloud tracks through the official SoundCloud HTML5 Widget API
 - Fetch track metadata from the SoundCloud API
 - Authenticate with SoundCloud using OAuth and PKCE
 - Refresh access tokens automatically
 - Expose SoundCloud playlists and playlist songs to other backend plugins
-- Add a **Log In / Log Out** entry to the plugins menu
+- Add **Connect Account / Log Out** entries to the plugins menu
 
-Private playlists require the user to authenticate with SoundCloud. Public playback still goes through SoundCloud's widget player in the browser.
+Public SoundCloud URLs work in basic mode without SoundCloud OAuth. Private playlists, account playlists, and numeric SoundCloud track IDs require the user to authenticate with SoundCloud.
 
 ---
 
 ## Requirements
 
-- A SoundCloud account
-- A SoundCloud developer app with a registered redirect URI
-- The app's **Client ID** and **Client Secret**
+- A public SoundCloud URL for basic playback
+- A SoundCloud account for private playlists and account library access
+- A SoundCloud developer app with a registered redirect URI for connected mode
+- The app's **Client ID** and **Client Secret** for connected mode
+- SoundCloud **Artist Pro** for app registration
 - OmniPlayr served over HTTPS in production
 
-SoundCloud's OAuth token endpoint requires the client secret during token exchange and refresh, so this plugin stores it per OmniPlayr account in the plugin database.
+SoundCloud's current developer documentation says app registration requires Artist Pro. That requirement is enforced by SoundCloud, not by OmniPlayr. Basic public URL playback does not use app registration. Connected mode uses OAuth, and SoundCloud's token endpoint requires the client secret during token exchange and refresh, so this plugin stores it per OmniPlayr account in the plugin database.
 
 ---
 
 ## Setup
 
-1. Go to [https://developers.soundcloud.com](https://developers.soundcloud.com) and create or open a SoundCloud app.
+### Basic public playback
+
+No SoundCloud app is needed for public URL playback. Queue a public SoundCloud URL with source type `soundcloud`; the frontend loads it through SoundCloud's embeddable widget and uses oEmbed metadata when available.
+
+### Connected mode
+
+1. Go to [https://soundcloud.com/you/apps](https://soundcloud.com/you/apps) and create or open a SoundCloud app.
 2. In the app settings, add this redirect URI:
    ```text
    https://<your-omniplayr-host>/api/plugin/soundcloud/callback
    ```
 3. Copy the app's **Client ID** and **Client Secret**.
-4. In OmniPlayr, open the plugins menu and click **Log In** under SoundCloud.
+4. In OmniPlayr, open the plugins menu and click **Connect Account** under SoundCloud.
 5. Paste the credentials and complete the SoundCloud authorization flow.
 
 For local development, OmniPlayr uses:
@@ -71,6 +80,7 @@ The backend is configured via `api.toml`:
 [api]
 base_url = "https://api.soundcloud.com"
 auth_base_url = "https://secure.soundcloud.com"
+oembed_base_url = "https://soundcloud.com/oembed"
 
 [requests]
 timeout_seconds = 10
@@ -86,6 +96,7 @@ state_ttl_seconds = 600
 |-----|-------------|
 | `api.base_url` | Base URL for SoundCloud API requests |
 | `api.auth_base_url` | Base URL for SoundCloud OAuth requests |
+| `api.oembed_base_url` | Base URL for public SoundCloud oEmbed metadata requests |
 | `requests.timeout_seconds` | Timeout for SoundCloud API and OAuth requests |
 | `cache.playlist_ttl_seconds` | In-memory playlist page cache TTL |
 | `oauth.state_ttl_seconds` | Pending OAuth login state lifetime |
@@ -142,6 +153,18 @@ OAuth redirect target. Exchanges the authorization code for tokens and redirects
 ### `GET /soundcloud/track/{track_id}`
 
 Returns a SoundCloud track URL and normalized metadata for browser playback.
+
+Numeric track IDs require connected mode. Public SoundCloud URLs can be resolved with `POST /soundcloud/track`.
+
+### `POST /soundcloud/track`
+
+Resolves a SoundCloud song ID or public SoundCloud URL.
+
+```json
+{ "song_id": "https://soundcloud.com/artist/track" }
+```
+
+Public URLs do not require SoundCloud app credentials.
 
 ### `DELETE /soundcloud/disconnect`
 

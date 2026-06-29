@@ -1,6 +1,7 @@
 [api]
 base_url = "str # comment: Base URL for SoundCloud API requests"
 auth_base_url = "str # comment: Base URL for SoundCloud OAuth requests"
+oembed_base_url = "str # comment: Base URL for SoundCloud oEmbed metadata requests"
 
 [requests]
 timeout_seconds = "int # comment: Timeout for SoundCloud API and OAuth requests in seconds # liveupdate:true"

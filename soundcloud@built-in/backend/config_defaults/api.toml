@@ -1,6 +1,7 @@
 [api]
 base_url = "https://api.soundcloud.com"
 auth_base_url = "https://secure.soundcloud.com"
+oembed_base_url = "https://soundcloud.com/oembed"
 
 [requests]
 timeout_seconds = 10

@@ -14,7 +14,7 @@ export async function startAuth(): Promise<void> {
 }
 
 export async function getTrack(trackId: string): Promise<{ id: string; url: string; metadata: Record<string, unknown> }> {
-    return await api(`/plugin/soundcloud/track/${encodeURIComponent(trackId)}`) as {
+    return await api('/plugin/soundcloud/track', { song_id: trackId }) as {
         id: string;
         url: string;
         metadata: Record<string, unknown>;

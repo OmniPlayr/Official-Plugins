@@ -49,6 +49,10 @@ def _auth_base() -> str:
     return str(_config("api.auth_base_url", "https://secure.soundcloud.com")).rstrip("/")
 
 
+def _oembed_base() -> str:
+    return str(_config("api.oembed_base_url", "https://soundcloud.com/oembed")).rstrip("/")
+
+
 def _timeout(default: int = 10) -> int:
     return max(1, int(_config("requests.timeout_seconds", default)))
 
@@ -176,7 +180,50 @@ def _track_metadata(track: dict) -> dict:
     }
 
 
+def _is_soundcloud_url(value: str) -> bool:
+    try:
+        parsed = urlparse(value)
+    except ValueError:
+        return False
+    hostname = (parsed.hostname or "").lower()
+    return parsed.scheme in {"http", "https"} and (
+        hostname == "soundcloud.com" or hostname.endswith(".soundcloud.com")
+    )
+
+
+def _public_url_metadata(url: str, timeout_seconds: int = 10) -> dict:
+    try:
+        res = http_requests.get(
+            _oembed_base(),
+            params={"format": "json", "url": url},
+            timeout=timeout_seconds,
+        )
+    except http_requests.RequestException as error:
+        log(f"SoundCloud oEmbed metadata request failed: {error}", "warning")
+        return {}
+
+    if not res.ok:
+        return {}
+
+    data = res.json()
+    return {
+        "title": data.get("title"),
+        "artist": data.get("author_name"),
+        "album": None,
+        "album_artist": data.get("author_name"),
+        "year": None,
+        "track": None,
+        "duration": None,
+        "album_art": data.get("thumbnail_url"),
+        "explicit": False,
+        "genre": None,
+        "filename": None,
+    }
+
+
 def get_metadata(user_id: int, song_id: str, timeout_seconds: int = 10) -> dict:
+    if _is_soundcloud_url(song_id):
+        return _public_url_metadata(song_id, timeout_seconds)
     res = _request(user_id, f"/tracks/{song_id}", timeout_seconds=timeout_seconds)
     return _track_metadata(res.json()) if res and res.ok else {}
 
@@ -301,6 +348,10 @@ class SetupRequest(BaseModel):
     client_secret: str
 
 
+class TrackRequest(BaseModel):
+    song_id: str
+
+
 @api.post("/soundcloud/setup")
 def setup_client(body: SetupRequest, request: Request, auth=Depends(verify_auth)):
     account_id = get_token_user(_account_token(request))
@@ -414,18 +465,39 @@ def auth_callback(code: str, state: str, request: Request):
     return RedirectResponse(url=frontend_origin + "/?soundcloud_connected=1")
 
 
-@api.get("/soundcloud/track/{track_id}")
-def track(track_id: str, request: Request, auth=Depends(verify_auth)):
+def _resolve_track(track_id: str, request: Request):
+    if _is_soundcloud_url(track_id):
+        return {
+            "id": track_id,
+            "url": track_id,
+            "metadata": _public_url_metadata(track_id, _timeout()),
+            "requires_connection": False,
+        }
+
     account_id = get_token_user(_account_token(request))
     res = _request(account_id, f"/tracks/{track_id}")
     if not res or not res.ok:
-        raise HTTPException(status_code=404, detail="SoundCloud track not found")
+        raise HTTPException(
+            status_code=404,
+            detail="SoundCloud track not found. Public SoundCloud URLs can play without connecting; numeric track IDs require SoundCloud login.",
+        )
     data = res.json()
     return {
         "id": str(data.get("id") or track_id),
         "url": data.get("permalink_url") or f"{_api_base()}/tracks/{track_id}",
         "metadata": _track_metadata(data),
+        "requires_connection": True,
     }
+
+
+@api.post("/soundcloud/track")
+def track(body: TrackRequest, request: Request, auth=Depends(verify_auth)):
+    return _resolve_track(body.song_id, request)
+
+
+@api.get("/soundcloud/track/{track_id}")
+def track_by_id(track_id: str, request: Request, auth=Depends(verify_auth)):
+    return _resolve_track(track_id, request)
 
 
 @api.delete("/soundcloud/disconnect")
