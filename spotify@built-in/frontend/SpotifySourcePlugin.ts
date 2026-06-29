@@ -1,13 +1,52 @@
 import type { SourcePlugin, TrackMetadata } from '../../modules/player';
 import { getVolumeStorage } from '../../modules/player';
 import { sdkPlay, sdkPause, sdkResume, sdkSeek, sdkSetVolume, onStateChange, getState, startVolumePolling, stopVolumePolling } from './sdk';
+import type { SpotifyState } from './sdk';
 
 const VOLUME_STORAGE_KEY = 'player_volume';
+const SPOTIFY_STATE_TIMEOUT_MS = 12000;
+
+function timeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const timeoutPromise = new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), ms);
+    });
+
+    return Promise.race([promise, timeoutPromise]).finally(() => {
+        if (timer) clearTimeout(timer);
+    });
+}
+
+function waitForSpotifyTrackState(
+    songId: string,
+    onReadyState: (state: SpotifyState) => void
+): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+        let unsub: (() => void) | null = null;
+
+        const timer = setTimeout(() => {
+            unsub?.();
+            reject(new Error('Timed out waiting for Spotify playback state'));
+        }, SPOTIFY_STATE_TIMEOUT_MS);
+
+        unsub = onStateChange(state => {
+            if (!state) return;
+
+            const track = state.track_window?.current_track;
+            if (track?.id !== songId) return;
+
+            clearTimeout(timer);
+            onReadyState(state);
+            unsub?.();
+            resolve();
+        });
+    });
+}
 
 export default class SpotifySourcePlugin implements SourcePlugin {
     private unsubscribe: (() => void) | null = null;
     private ticker: ReturnType<typeof setInterval> | null = null;
-    private currentTrackId: string | null = null;
 
     private lastPosition = 0;
     private lastPositionAt = 0;
@@ -50,44 +89,44 @@ export default class SpotifySourcePlugin implements SourcePlugin {
         this.unsubscribe?.();
         this.stopTicker();
 
-        this.currentTrackId = songId;
-
-        await sdkPlay(songId);
+        try {
+            await timeout(
+                sdkPlay(songId),
+                SPOTIFY_STATE_TIMEOUT_MS,
+                'Timed out waiting for Spotify Web Playback SDK readiness'
+            );
+        } catch (error) {
+            console.error('[spotify@built-in] Spotify is unavailable or failed to start playback.', error);
+            throw error;
+        }
 
         sdkSetVolume(this._volume);
 
         if (!autoplay) sdkPause();
 
-        await new Promise<void>(resolve => {
-            const unsub = onStateChange(state => {
-                if (!state) return;
+        await waitForSpotifyTrackState(songId, state => {
+            const track = state.track_window?.current_track;
+            if (!track) return;
 
-                const track = state.track_window?.current_track;
-                if (track?.id !== songId) return;
-
-                callbacks.onMetadata({
-                    title: track.name,
-                    artist: track.artists.map((a: { name: string }) => a.name).join(', '),
-                    album: track.album.name,
-                    album_art: track.album.images[0]?.url ?? null,
-                    duration: state.duration / 1000,
-                    genre: null,
-                    year: null,
-                    filename: null,
-                });
-
-                callbacks.onReady();
-
-                startVolumePolling(async (v: number) => {
-                    this._volume = v;
-                    const storage = getVolumeStorage();
-                    storage?.setItem(VOLUME_STORAGE_KEY, String(v));
-                    callbacks.onStateChange();
-                }, (window as any).sdkPlayer);
-
-                unsub();
-                resolve();
+            callbacks.onMetadata({
+                title: track.name,
+                artist: track.artists.map((a: { name: string }) => a.name).join(', '),
+                album: track.album.name,
+                album_art: track.album.images[0]?.url ?? null,
+                duration: state.duration / 1000,
+                genre: null,
+                year: null,
+                filename: null,
             });
+
+            callbacks.onReady();
+
+            startVolumePolling(async (v: number) => {
+                this._volume = v;
+                const storage = getVolumeStorage();
+                storage?.setItem(VOLUME_STORAGE_KEY, String(v));
+                callbacks.onStateChange();
+            }, window.sdkPlayer);
         });
 
         this.unsubscribe = onStateChange(state => {

@@ -1,34 +1,90 @@
-import { makeToast } from '@wokki20/jspt';
 import { getValidToken } from './auth';
 import api from '../../modules/api';
-import { useEffect, useState } from 'react';
 
 declare global {
     interface Window {
-        Spotify: any;
+        Spotify: {
+            Player: new (options: {
+                name: string;
+                getOAuthToken: (cb: (token: string) => void) => void | Promise<void>;
+                volume: number;
+            }) => SpotifyPlayer;
+        };
+        sdkPlayer?: SpotifyPlayer;
         onSpotifyWebPlaybackSDKReady: () => void;
     }
 }
 
-type StateListener = (state: any | null) => void;
+export interface SpotifyTrack {
+    id: string;
+    name: string;
+    artists: { name: string }[];
+    album: {
+        name: string;
+        images: { url?: string }[];
+    };
+}
 
-let sdkPlayer: any = null;
+export interface SpotifyState {
+    track_window?: {
+        current_track?: SpotifyTrack;
+    };
+    duration: number;
+    position: number;
+    paused: boolean;
+}
+
+export interface SpotifyPlayer {
+    addListener(event: 'ready', cb: (payload: { device_id: string }) => void): void;
+    addListener(event: 'not_ready', cb: () => void): void;
+    addListener(
+        event: 'initialization_error' | 'authentication_error' | 'account_error' | 'playback_error',
+        cb: (payload: { message: string }) => void
+    ): void;
+    addListener(event: 'player_state_changed', cb: (state: SpotifyState | null) => void): void;
+    connect(): void;
+    pause(): void;
+    resume(): void;
+    seek(ms: number): void;
+    setVolume(fraction: number): void;
+    getVolume(): Promise<number>;
+    disconnect(): void;
+}
+
+type StateListener = (state: SpotifyState | null) => void;
+
+let sdkPlayer: SpotifyPlayer | null = null;
 let deviceId: string | null = null;
-let currentState: any = null;
-let stateListeners = new Set<StateListener>();
+let currentState: SpotifyState | null = null;
+const stateListeners = new Set<StateListener>();
 let readyResolve: (() => void) | null = null;
 let readyPromise = new Promise<void>(r => { readyResolve = r; });
 let volumeInterval: ReturnType<typeof setInterval> | null = null;
+let sdkLoadStarted = false;
 
-async function loadAccount() {
-    return await api("get_account", undefined, { account_id: "me" }) as any;
+function spotifyConsoleError(message: string, error?: unknown) {
+    if (error) {
+        console.error(`[spotify@built-in] ${message}`, error);
+    } else {
+        console.error(`[spotify@built-in] ${message}`);
+    }
+}
+
+async function loadAccount(): Promise<{ name?: string } | null> {
+    const account = await api("get_account", undefined, { account_id: "me" });
+
+    if (account && typeof account === 'object' && 'name' in account) {
+        return account as { name?: string };
+    }
+
+    return null;
 }
 
 function resetReady() {
     readyPromise = new Promise<void>(r => { readyResolve = r; });
 }
 
-function notifyState(state: any | null) {
+function notifyState(state: SpotifyState | null) {
     currentState = state;
     stateListeners.forEach(cb => cb(state));
 }
@@ -42,8 +98,8 @@ export function getState() { return currentState; }
 export function getDeviceId() { return deviceId; }
 export function waitReady() { return readyPromise; }
 
-export async function loadSdk() {
-    if (document.getElementById('spotify-sdk')) return;
+export async function loadSdk(): Promise<boolean> {
+    if (document.getElementById('spotify-sdk')) return true;
     const account = await loadAccount();
     const name = account?.name;
 
@@ -52,21 +108,13 @@ export async function loadSdk() {
         window.location.hostname !== 'localhost' &&
         window.location.hostname !== '127.0.0.1'
     ) {
-        makeToast({
-            message: 'Spotify SDK requires HTTPS. Please reload this page over HTTPS.',
-            style: 'default-error',
-            duration: 5000
-        })
-        return;
+        spotifyConsoleError('Spotify SDK is unavailable because this page is not using HTTPS.');
+        return false;
     } else if (
         window.location.protocol === 'http:' &&
         (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ) {
-        makeToast({
-            message: 'Running on localhost over HTTP is allowed, but Spotify features may still require HTTPS in production.',
-            style: 'default-error',
-            duration: 5000
-        })
+        console.warn('[spotify@built-in] Running on localhost over HTTP is allowed, but Spotify features may still require HTTPS in production.');
     }
 
     window.onSpotifyWebPlaybackSDKReady = () => {
@@ -78,7 +126,7 @@ export async function loadSdk() {
             },
             volume: 1,
         });
-        (window as any).sdkPlayer = sdkPlayer;
+        window.sdkPlayer = sdkPlayer;
 
         sdkPlayer.addListener('ready', ({ device_id }: { device_id: string }) => {
             deviceId = device_id;
@@ -86,8 +134,25 @@ export async function loadSdk() {
         });
 
         sdkPlayer.addListener('not_ready', () => {
+            spotifyConsoleError('Spotify Web Playback SDK device became unavailable.');
             deviceId = null;
             resetReady();
+        });
+
+        sdkPlayer.addListener('initialization_error', ({ message }: { message: string }) => {
+            spotifyConsoleError(`Spotify SDK initialization failed: ${message}`);
+        });
+
+        sdkPlayer.addListener('authentication_error', ({ message }: { message: string }) => {
+            spotifyConsoleError(`Spotify SDK authentication failed: ${message}`);
+        });
+
+        sdkPlayer.addListener('account_error', ({ message }: { message: string }) => {
+            spotifyConsoleError(`Spotify SDK account error: ${message}`);
+        });
+
+        sdkPlayer.addListener('playback_error', ({ message }: { message: string }) => {
+            spotifyConsoleError(`Spotify SDK playback error: ${message}`);
         });
 
         sdkPlayer.addListener('player_state_changed', notifyState);
@@ -95,11 +160,20 @@ export async function loadSdk() {
         sdkPlayer.connect();
     };
 
+    sdkLoadStarted = true;
     const script = document.createElement('script');
     script.id = 'spotify-sdk';
     script.src = 'https://sdk.scdn.co/spotify-player.js';
+    script.onerror = () => {
+        sdkLoadStarted = false;
+        spotifyConsoleError('Spotify Web Playback SDK script failed to load.');
+    };
     document.head.appendChild(script);
+
+    return true;
 }
+
+export function isSdkLoadStarted() { return sdkLoadStarted; }
 
 export async function sdkPlay(trackId: string) {
     await waitReady();
@@ -122,8 +196,8 @@ export function sdkResume() { sdkPlayer?.resume(); }
 export function sdkSeek(ms: number) { sdkPlayer?.seek(ms); }
 export function sdkSetVolume(fraction: number) { sdkPlayer?.setVolume(fraction); }
 
-export function startVolumePolling(onChange: (v: number) => void, sdkPlayer: any) {
-    if (volumeInterval) return;
+export function startVolumePolling(onChange: (v: number) => void, sdkPlayer: SpotifyPlayer | null | undefined) {
+    if (volumeInterval || !sdkPlayer) return;
 
     let last = -1;
 

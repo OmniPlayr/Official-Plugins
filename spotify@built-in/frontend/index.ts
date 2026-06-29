@@ -2,7 +2,7 @@ import { createRoot } from 'react-dom/client';
 import { createElement } from 'react';
 import { getStatus, disconnect } from './auth';
 import { loadSdk } from './sdk';
-import { player, playSong } from '../../modules/player';
+import { player } from '../../modules/player';
 import SpotifySourcePlugin from './SpotifySourcePlugin';
 import SpotifySetup from './SpotifySetup';
 import { registerPluginsMenuItem } from '../../modules/plugins';

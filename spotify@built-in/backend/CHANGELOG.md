@@ -4,6 +4,14 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-06-29
+
+### Changed
+- Frontend: Spotify SDK availability and playback failures now log to the webpage console instead of showing toast notifications.
+
+### Fixed
+- Frontend: Added bounded waits around Spotify Web Playback SDK readiness and track state updates so failed playback attempts no longer leave the player stuck loading.
+
 ## [1.1.2] - 2026-06-29
 
 ### Added
