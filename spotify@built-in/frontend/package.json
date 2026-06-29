@@ -6,4 +6,5 @@
     "description": "Play your Spotify music with OmniPlayr by using this plugin.",
     "type": "frontend",
     "min-dev-version": "2026.6.19"
+
 }

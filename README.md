@@ -37,7 +37,7 @@ Supports `.mp3`, `.flac`, `.wav`, `.ogg`, `.m4a`, `.aac`, and `.opus`. Reads ful
 ### [`spotify@built-in`](./spotify@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend 1.1.3 / Frontend 1.1.6
+**Version:** Backend 1.1.6 / Frontend 1.1.6
 
 Stream Spotify directly inside OmniPlayr. Connect your Spotify account once and OmniPlayr registers itself as a native Spotify playback device. Audio plays through the official Web Playback SDK, metadata is fetched via the Spotify Web API, and tokens are refreshed automatically in the background.
 
@@ -50,7 +50,7 @@ Requires a Spotify Premium account and a Spotify Developer App with a registered
 ### [`soundcloud@built-in`](./soundcloud@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend 1.0.2 / Frontend 1.0.2
+**Version:** Backend 1.0.3 / Frontend 1.0.3
 
 Play public SoundCloud URLs inside OmniPlayr through the SoundCloud HTML5 Widget API. Connect a SoundCloud account to fetch private playlists and account playlists through SoundCloud's OAuth API, with tokens refreshed automatically by the backend.
 
@@ -107,6 +107,7 @@ Have a plugin idea or a fix to submit? PRs are welcome. Make sure each backend o
 ### Automatic registry publishing
 
 Every push to `main` that changes a plugin package automatically publishes the affected backend and/or frontend package to the OmniPlayr registry. The workflow stages nested full-stack packages in a folder matching their manifest `id`, as required by the registry, and then runs `omniplayr publish`.
+
 
 Repository maintainers need to create a GitHub environment named `plugin-registry` and add an encrypted `OMNIPLAYR_ACCESS_TOKEN` secret. Create the token in [registry token settings](https://omniplayr.wokki20.nl/packages/settings/tokens) with only the `packages:write` scope. Plugin versions must be bumped before merging an update. A manual workflow run can publish every tracked plugin package when needed.
 

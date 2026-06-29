@@ -232,4 +232,5 @@ export default function SpotifySetup({ onDone }: Props) {
             </div>
         </div>
     );
+
 }

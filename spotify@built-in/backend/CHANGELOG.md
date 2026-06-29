@@ -4,6 +4,7 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+
 ## [1.1.6] - 2026-06-29
 
 ### Changed

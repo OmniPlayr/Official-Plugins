@@ -22,6 +22,7 @@ function mountSetupPopup() {
     });
 }
 
+
 export function init() {
     getStatus().then(s => {
         if (s.connected) {
