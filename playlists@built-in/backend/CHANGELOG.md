@@ -2,6 +2,13 @@
 
 All notable changes to `playlists@built-in` are documented here. This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+## [beta-0.1.1] - 2026-06-29
+
+### Added
+- Added `min-dev-version` field in package.json
+
 ## [beta-0.1.0] - 2026-06-23
 
 ### Added

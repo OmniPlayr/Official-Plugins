@@ -1,14 +1,13 @@
 {
     "name": "artists",
     "author": "built-in",
-    "version": "1.1.3",
+    "version": "1.2.0",
     "description": "Get more info about artists",
     "type": "backend",
     "repository": "https://github.com/OmniPlayr/Official-Plugins",
     "homepage": "https://omniplayr.wokki20.nl",
     "pythonDependencies": {
-        "requests": ">=2.33.1",
-        "python-dotenv": ">=1.2.2"
+        "requests": ">=2.33.1"
     },
     "readme": "README.md",
     "contributors": [
@@ -17,5 +16,6 @@
     "changelog": "CHANGELOG.md",
     "license": "LICENSE",
     "banner": "banner.png",
-    "icon": "icon.png"
+    "icon": "icon.png",
+    "min-dev-version": "2026.6.10"
 }

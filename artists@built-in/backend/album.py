@@ -1,7 +1,5 @@
 import requests
 import time
-from dotenv import load_dotenv
-import os
 import json
 from pathlib import Path
 from api.helpers.plugin_config import get_plugin_config
@@ -9,14 +7,12 @@ from .artist import (
     _get,
     _name_matches,
     extract_text,
+    genius_headers,
     MUSICBRAINZ_BASE,
     COVER_ART_BASE,
     GENIUS_BASE,
     HEADERS_MB,
-    HEADERS_GENIUS,
 )
-
-load_dotenv()
 
 PLUGIN_KEY = "artists@built-in"
 
@@ -165,12 +161,12 @@ def get_cover_art_url(release_group_id):
     return None
 
 
-def search_album_genius(album_name, artist_name, song_name=None):
+def search_album_genius(album_name, artist_name, song_name=None, genius_token=None):
     query = f"{artist_name} {song_name or album_name}"
     r = _get(
         f"{GENIUS_BASE}/search",
         params={"q": query},
-        headers=HEADERS_GENIUS,
+        headers=genius_headers(genius_token),
     )
     hits = r.json().get("response", {}).get("hits", [])
     for hit in hits:
@@ -186,22 +182,22 @@ def search_album_genius(album_name, artist_name, song_name=None):
     return None
 
 
-def get_genius_album(genius_album_id):
+def get_genius_album(genius_album_id, genius_token=None):
     r = _get(
         f"{GENIUS_BASE}/albums/{genius_album_id}",
-        headers=HEADERS_GENIUS,
+        headers=genius_headers(genius_token),
     )
     return r.json().get("response", {}).get("album", {})
 
 
-def get_genius_album_tracks(genius_album_id):
+def get_genius_album_tracks(genius_album_id, genius_token=None):
     tracks = []
     page = 1
     while True:
         r = _get(
             f"{GENIUS_BASE}/albums/{genius_album_id}/tracks",
             params={"per_page": 50, "page": page},
-            headers=HEADERS_GENIUS,
+            headers=genius_headers(genius_token),
         )
         data = r.json().get("response", {})
         page_tracks = data.get("tracks", [])
@@ -230,7 +226,7 @@ def _merge_songs(mb_tracks, cover_art=None):
     return merged
 
 
-def get_album_info(album_name, artist_name, song_name=None, release_type=None, no_cache=False):
+def get_album_info(album_name, artist_name, song_name=None, release_type=None, no_cache=False, genius_token=None):
     start = time.time()
 
     if not no_cache:
@@ -258,8 +254,8 @@ def get_album_info(album_name, artist_name, song_name=None, release_type=None, n
 
     mb_cover_art = get_cover_art_url(mb["id"])
 
-    genius_album_hit = search_album_genius(canonical_name, canonical_artist, song_name=song_name)
-    genius_album = get_genius_album(genius_album_hit["id"]) if genius_album_hit else {}
+    genius_album_hit = search_album_genius(canonical_name, canonical_artist, song_name=song_name, genius_token=genius_token)
+    genius_album = get_genius_album(genius_album_hit["id"], genius_token=genius_token) if genius_album_hit else {}
 
     dom = genius_album.get("description", {}).get("dom", {})
     description = extract_text(dom).strip() or None

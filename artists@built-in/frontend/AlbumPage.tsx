@@ -5,6 +5,7 @@ import { useEffect, useState, useRef, Fragment } from 'react';
 import unknownArtwork from '../../assets/images/unknown-art.svg';
 import { ArrowBigLeft, Clock } from 'lucide-react';
 import { navigate } from '../../modules/navigate';
+import { Trans, useTranslation } from 'react-i18next';
 
 async function getAlbum(artist: string, song?: string, album?: string, type?: string) {
     if (albumCache.has(album + "_" + artist)) {
@@ -59,9 +60,11 @@ function AlbumPage() {
     const { album } = useParams<{ album: string }>();
     const [data, setData] = useState<any>(null);
     const [notFound, setNotFound] = useState(false);
+    const [missingToken, setMissingToken] = useState(false);
     const [loading, setLoading] = useState(false);
     const [stickyVisible, setStickyVisible] = useState(false);
     const profileImageRef = useRef<HTMLImageElement>(null);
+    const { t } = useTranslation('artists@built-in');
 
     const estimatedMs = (() => {
         if (album && artist && albumCache.has(album + "_" + artist)) return 0;
@@ -75,6 +78,7 @@ function AlbumPage() {
         if (!artist || !album) return;
         setData(null);
         setNotFound(false);
+        setMissingToken(false);
         setLoading(true);
         const ctx = JSON.parse(sessionStorage.getItem('artist-nav-context') || '{}');
         sessionStorage.removeItem('artist-nav-context');
@@ -86,6 +90,13 @@ function AlbumPage() {
                 setNotFound(true);
             } else {
                 setData(fetched);
+            }
+            setLoading(false);
+        }).catch(error => {
+            if (error?.status === 401) {
+                setMissingToken(true);
+            } else {
+                setNotFound(true);
             }
             setLoading(false);
         });
@@ -102,7 +113,17 @@ function AlbumPage() {
         return () => observer.disconnect();
     }, [data]);
 
-    if (notFound) return <div className="artist-page not-found"><h1>Release Not Found</h1></div>;
+    if (missingToken) {
+        return (
+            <div className="artist-page not-found">
+                <h1 className="not-found-title">{t('missing_token.title')}</h1>
+                <p className="not-found-text">{t('missing_token.text')}</p>
+                <button className="not-found-button" onClick={() => window.location.href = '/settings/plugins'}>{t('missing_token.button')}</button>
+            </div>
+        );
+    }
+
+    if (notFound) return <div className="artist-page not-found"><h1>{t('not_found.release_title')}</h1></div>;
 
     return (
         <div className="artist-page">
@@ -122,7 +143,7 @@ function AlbumPage() {
             {!loading && data && (<>
             <div className={`artist-sticky-bar ${stickyVisible ? 'visible' : ''}`}>
                 <div className="artist-sticky-bar-left">
-                    <button data-type="secondary" className="artist-page-back-button" onClick={() => navigate(`/artist/${encodeURIComponent(artist || '')}`)}><ArrowBigLeft />Go back to {data.artist}</button>
+                    <button data-type="secondary" className="artist-page-back-button" onClick={() => navigate(`/artist/${encodeURIComponent(artist || '')}`)}><ArrowBigLeft />{t('album.back', { artist: data.artist })}</button>
                     <img
                         className="artist-sticky-image"
                         src={data.cover_art || unknownArtwork}
@@ -132,7 +153,7 @@ function AlbumPage() {
                     <p className="artist-sticky-name">{data.title}</p>
                 </div>
             </div>
-            <button data-type="secondary" className="artist-page-back-button" onClick={() => navigate(`/artist/${encodeURIComponent(artist || '')}`)}><ArrowBigLeft />Go back to {data.artist}</button>
+            <button data-type="secondary" className="artist-page-back-button" onClick={() => navigate(`/artist/${encodeURIComponent(artist || '')}`)}><ArrowBigLeft />{t('album.back', { artist: data.artist })}</button>
             <div className="artist-page-header no-banner">
                 <img
                     ref={profileImageRef}
@@ -148,28 +169,28 @@ function AlbumPage() {
             </div>
             <div className="artist-page-content no-banner">
                 <div className="artist-page-content-item">
-                    <h2 className="artist-page-title">About {data.title}</h2>
+                    <h2 className="artist-page-title">{t('section.about', { name: data.title })}</h2>
                     <div className="artist-page-info-items">
                         {data.release_date &&
                         <div className="artist-page-info-item">
-                            <p className="artist-page-info-item-key">Release Date</p>
-                            <p className="artist-page-info-item-value">{data.release_date || 'Unknown'}</p>
+                            <p className="artist-page-info-item-key">{t('field.release_date')}</p>
+                            <p className="artist-page-info-item-value">{data.release_date || t('field.unknown')}</p>
                         </div>
                         }
                         {data.songs &&
                         <div className="artist-page-info-item">
-                            <p className="artist-page-info-item-key">{data.songs.length === 1 ? 'Track' : 'Tracks'}</p>
-                            <p className="artist-page-info-item-value">{data.songs.length || 'Unknown'}</p>
+                            <p className="artist-page-info-item-key">{t('field.tracks', { count: data.songs.length })}</p>
+                            <p className="artist-page-info-item-value">{data.songs.length || t('field.unknown')}</p>
                         </div>
                         }
                         {data.type &&
                         <div className="artist-page-info-item">
-                            <p className="artist-page-info-item-key">Type</p>
-                            <p className="artist-page-info-item-value">{data.type || 'Unknown'}</p>
+                            <p className="artist-page-info-item-key">{t('field.type')}</p>
+                            <p className="artist-page-info-item-value">{data.type || t('field.unknown')}</p>
                         </div>
                         }
                     </div>
-                    <p className="artist-page-info-item-key artist-page-genres-key">Genres</p>
+                    <p className="artist-page-info-item-key artist-page-genres-key">{t('field.genres')}</p>
                     <div className="artist-page-info-genres">
                         {data.genres?.map((genre: string, i: number) => <p key={i} className="artist-page-info-genre">{genre}</p>)}
                     </div>
@@ -178,7 +199,7 @@ function AlbumPage() {
                     <thead>
                         <tr className="artist-page-songs-header">
                             <th className="artist-page-song-number">#</th>
-                            <th className="artist-page-song-info-title">Title</th>
+                            <th className="artist-page-song-info-title">{t('songs.title')}</th>
                             <th className="artist-page-song-duration"><Clock size={14} /></th>
                         </tr>
                     </thead>
@@ -215,7 +236,18 @@ function AlbumPage() {
             </div>
             <div className="artist-page-request-info">
                 <p className="artist-page-request-info-text">
-                    Request took <strong>{data.client_time || 0} ms</strong> ({data.elapsed_ms || 0} ms on server) with {data.from_cache ? <strong>cached response</strong> : <strong>fresh response</strong>}. The expected accuracy of getting the correct album is <strong>{((data.accuracy || 0) * 100).toFixed(2)}%</strong> ({data.accuracy || 0}).
+                    <Trans
+                        i18nKey="request.album"
+                        ns="artists@built-in"
+                        values={{
+                            clientTime: data.client_time || 0,
+                            serverTime: data.elapsed_ms || 0,
+                            cacheType: data.from_cache ? t('request.cached') : t('request.fresh'),
+                            accuracyPercent: ((data.accuracy || 0) * 100).toFixed(2),
+                            accuracy: data.accuracy || 0,
+                        }}
+                        components={{ time: <strong />, cache: <strong />, accuracy: <strong /> }}
+                    />
                 </p>
             </div>
             </>)}

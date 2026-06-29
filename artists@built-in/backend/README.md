@@ -55,11 +55,13 @@ This plugin requires a Genius Client Access Token to fetch artist bios and image
 1. Create an account at [genius.com](https://genius.com)
 2. Go to [genius.com/api-clients](https://genius.com/api-clients) and create a new API client
 3. Copy your **Client Access Token**
-4. Create a `.env` file next to the plugin (see `.env.example`) and add:
+4. Open **Settings -> Plugins** in OmniPlayr
+5. Open the menu on `artists@built-in`
+6. Choose **Set Genius token** and paste the token
 
-```env
-genius_client_access_token="your_token_here"
-```
+The token is saved per OmniPlayr account. Artist and album profile pages will return `401 No Genius token configured` until the current account has saved a token.
+
+Admins can enable **Apply to all accounts** while saving a token. That writes the same Genius token for every OmniPlayr account.
 
 ---
 
@@ -95,13 +97,47 @@ cache_dir = "/user_storage/artists-cache"
 | Package | Version |
 |---------|---------|
 | `requests` | `>=2.33.1` |
-| `python-dotenv` | `>=1.2.2` |
 
 ---
 
 ## API Endpoints
 
 These endpoints require authentication.
+
+### `GET /api/plugin/artists/status`
+
+Returns whether the current OmniPlayr account has a Genius token saved.
+
+Example:
+
+```json
+{
+  "token_set": true
+}
+```
+
+---
+
+### `POST /api/plugin/artists/setup`
+
+Saves or replaces the Genius Client Access Token for the current OmniPlayr account.
+
+```json
+{
+  "token": "your_genius_client_access_token",
+  "all_accounts": false
+}
+```
+
+Set `all_accounts` to `true` as an admin to save the token for every account.
+
+---
+
+### `DELETE /api/plugin/artists/disconnect`
+
+Removes the saved Genius token for the current OmniPlayr account.
+
+---
 
 ### `GET /api/plugin/artists/exists`
 

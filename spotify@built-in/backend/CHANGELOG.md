@@ -4,6 +4,11 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-06-29
+
+### Added
+- Added `min-dev-version` field in package.json
+
 ## [1.1.1] - 2026-06-22
 
 ### Changed

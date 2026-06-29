@@ -4,6 +4,21 @@ All notable changes to `artists@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-06-29
+
+### Added
+
+- Added account-scoped Genius token storage and setup endpoints.
+- Added a frontend plugin menu item that opens a PopupContext token setup dialog.
+- Added an admin-only option to save the Genius token for all accounts.
+- Added a no-token state for artist and album pages when the current account has not configured a token.
+- Moved artists plugin frontend text into plugin-local i18n resources.
+- Added `min-dev-version` field in package.json
+
+### Changed
+
+- Genius requests now use the current account's saved token instead of a server-wide `.env` token.
+
 ## [1.1.3] - 2026-06-23
 
 ### Added

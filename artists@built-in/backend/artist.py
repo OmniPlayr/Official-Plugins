@@ -1,28 +1,31 @@
 import requests
 import time
-from dotenv import load_dotenv
-import os
 import json
 from pathlib import Path
 from api.helpers.plugin_config import get_plugin_config
 
-load_dotenv()
-
-GENIUS_TOKEN = os.getenv("genius_client_access_token")
-
 PLUGIN_KEY = "artists@built-in"
+_db = None
 
 MUSICBRAINZ_BASE = str(get_plugin_config(PLUGIN_KEY, "api.music_brainz_base_url"))
 COVER_ART_BASE = str(get_plugin_config(PLUGIN_KEY, "api.cover_art_base_url"))
 GENIUS_BASE = str(get_plugin_config(PLUGIN_KEY, "api.genius_base_url"))
 
 HEADERS_MB = {"User-Agent": str(get_plugin_config(PLUGIN_KEY, "api.request.user_agent"))}
-HEADERS_GENIUS = {"Authorization": f"Bearer {GENIUS_TOKEN}"}
 
 _cfg_dir = get_plugin_config(PLUGIN_KEY, "cache.cache_dir", default='/user_storage/artists-cache')
 if _cfg_dir:
     CACHE_DIR = Path(_cfg_dir)
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def set_db(db):
+    global _db
+    _db = db
+
+
+def genius_headers(genius_token):
+    return {"Authorization": f"Bearer {genius_token}"}
 
 
 def _get(url, params=None, headers=None, retries=3, **kwargs):
@@ -161,12 +164,12 @@ def get_releases_with_covers(releases):
     ]
 
 
-def search_artist_genius(artist_name, song_name=None):
+def search_artist_genius(artist_name, song_name=None, genius_token=None):
     query = f"{artist_name} {song_name}" if song_name else artist_name
     r = _get(
         f"{GENIUS_BASE}/search",
         params={"q": query},
-        headers=HEADERS_GENIUS,
+        headers=genius_headers(genius_token),
     )
     hits = r.json().get("response", {}).get("hits", [])
     for hit in hits:
@@ -177,10 +180,10 @@ def search_artist_genius(artist_name, song_name=None):
     return None
 
 
-def get_genius_artist(genius_id):
+def get_genius_artist(genius_id, genius_token=None):
     r = _get(
         f"{GENIUS_BASE}/artists/{genius_id}",
-        headers=HEADERS_GENIUS,
+        headers=genius_headers(genius_token),
     )
     return r.json().get("response", {}).get("artist", {})
 
@@ -203,7 +206,7 @@ def extract_text(node):
     return ""
 
 
-def get_artist_info(artist_name, song_name=None, album_name=None, no_cache=False):
+def get_artist_info(artist_name, song_name=None, album_name=None, no_cache=False, genius_token=None):
     start = time.time()
 
     if not no_cache:
@@ -219,8 +222,8 @@ def get_artist_info(artist_name, song_name=None, album_name=None, no_cache=False
 
     canonical_name = mb["name"]
 
-    genius_hit = search_artist_genius(canonical_name, song_name=song_name)
-    genius_artist = get_genius_artist(genius_hit["id"]) if genius_hit else {}
+    genius_hit = search_artist_genius(canonical_name, song_name=song_name, genius_token=genius_token)
+    genius_artist = get_genius_artist(genius_hit["id"], genius_token=genius_token) if genius_hit else {}
 
     dom = genius_artist.get("description", {}).get("dom", {})
     bio = extract_text(dom).strip() or None

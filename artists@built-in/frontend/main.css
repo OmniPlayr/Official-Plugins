@@ -6,6 +6,112 @@
 .album-name:hover {
     text-decoration: underline;
 }
+.artists-token-popup {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: min(420px, 100%);
+}
+.artists-token-help {
+    display: flex;
+    gap: 10px;
+    color: var(--clr-text-a20);
+    line-height: 1.45;
+}
+.artists-token-help-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--clr-primary-a0);
+}
+.artists-token-link {
+    width: max-content;
+    font-size: 14px;
+}
+.artists-token-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--clr-text-a10);
+}
+.artists-token-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--clr-popup-a10);
+    border: 1px solid var(--clr-popup-a40);
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+.artists-token-field-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    color: var(--clr-text-a30);
+}
+.artists-token-input {
+    width: 100%;
+    min-width: 0;
+    border: none;
+    outline: none;
+    color: var(--clr-text-a0);
+    background: transparent;
+}
+.artists-token-all-accounts {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid var(--clr-popup-a30);
+    border-radius: 6px;
+    background-color: var(--clr-popup-a10);
+    color: var(--clr-text-a0);
+    cursor: pointer;
+}
+.artists-token-all-accounts input {
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+.artists-token-all-accounts span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.artists-token-all-accounts small {
+    color: var(--clr-text-a30);
+    line-height: 1.35;
+}
+.artists-token-error {
+    color: var(--clr-danger-a0, #ff6b6b);
+    font-size: 13px;
+}
+.artists-token-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.artists-token-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 6px;
+    padding: 8px 12px;
+    border: 1px solid var(--clr-popup-a50);
+    cursor: pointer;
+}
+.artists-token-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+.artists-token-button--primary {
+    color: var(--clr-text-a0);
+    background-color: var(--clr-primary-a0);
+}
+.artists-token-button--danger {
+    color: var(--clr-text-a0);
+    background-color: var(--clr-popup-a20);
+}
 .artist-page {
     width: 100%;
     position: relative;
