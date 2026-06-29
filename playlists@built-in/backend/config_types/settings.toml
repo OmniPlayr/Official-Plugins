@@ -10,6 +10,7 @@ enabled = "bool # comment: Enable incremental NDJSON playlist responses # liveup
 [providers]
 default_services = "str # comment: Comma-separated services queried when the request does not specify services # liveupdate:true"
 check_spotify_playlists = "bool # comment: Include Spotify when loading playlist collections # liveupdate:true"
+check_soundcloud_playlists = "bool # comment: Include SoundCloud when loading playlist collections # liveupdate:true"
 
 [spotify]
 load_all_playlists = "bool # comment: Continue loading Spotify playlist pages until all are streamed # liveupdate:true"
@@ -22,6 +23,18 @@ song_display_batch_size = "int # comment: Number of songs streamed before applyi
 song_display_batch_delay_ms = "int # comment: Small delay between streamed song batches # liveupdate:true"
 song_request_delay_ms = "int # comment: Minimum delay between Spotify track page requests to reduce rate-limit pressure # liveupdate:true"
 max_song_pages = "int # comment: Safety limit for Spotify track pagination # liveupdate:true"
+
+[soundcloud]
+load_all_playlists = "bool # comment: Continue loading SoundCloud playlist pages until all are streamed # liveupdate:true"
+request_page_size = "int # comment: SoundCloud playlists requested per API call, up to 50 # liveupdate:true"
+display_batch_size = "int # comment: SoundCloud playlist cards released to the frontend per streamed batch # liveupdate:true"
+display_batch_delay_ms = "int # comment: Delay between SoundCloud playlist batches # liveupdate:true"
+max_playlist_pages = "int # comment: Safety limit for SoundCloud playlist pagination # liveupdate:true"
+song_page_size = "int # comment: SoundCloud tracks processed per batch # liveupdate:true"
+song_display_batch_size = "int # comment: Number of SoundCloud songs streamed before applying the display delay # liveupdate:true"
+song_display_batch_delay_ms = "int # comment: Small delay between streamed SoundCloud song batches # liveupdate:true"
+song_request_delay_ms = "int # comment: Minimum delay between SoundCloud track page requests to reduce rate-limit pressure # liveupdate:true"
+max_song_pages = "int # comment: Safety limit for SoundCloud track pagination # liveupdate:true"
 
 [pagination]
 default_limit = "int # comment: Default number of playlists requested per service # liveupdate:true"

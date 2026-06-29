@@ -11,6 +11,7 @@ from api.helpers.server import verify_auth, get_token_user
 from fastapi import Depends, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from api.helpers.log import log
+from .services import soundcloud as soundcloud_service
 from .services import spotify as spotify_service
 
 PLUGIN_KEY = "playlists@built-in"
@@ -238,19 +239,21 @@ def _resolve_options(limit, offset, services):
     if resolved_offset < 0:
         raise HTTPException(status_code=400, detail="offset must be at least 0")
 
-    configured_services = str(_config("providers.default_services", "local,spotify"))
+    configured_services = str(_config("providers.default_services", "local,spotify,soundcloud"))
     requested = services.split(",") if services is not None else configured_services.split(",")
     requested_services = {
         "local" if str(service).strip().lower() == "omniplayr" else str(service).strip().lower()
         for service in requested
         if str(service).strip()
     }
-    invalid_services = requested_services - {"local", "spotify"}
+    invalid_services = requested_services - {"local", "spotify", "soundcloud"}
     if not requested_services or invalid_services:
         invalid = ", ".join(sorted(invalid_services)) or "none"
         raise HTTPException(status_code=400, detail=f"Invalid playlist services: {invalid}")
     if not bool(_config("providers.check_spotify_playlists", True)):
         requested_services.discard("spotify")
+    if not bool(_config("providers.check_soundcloud_playlists", True)):
+        requested_services.discard("soundcloud")
 
     return resolved_limit, resolved_offset, requested_services
 
@@ -301,6 +304,29 @@ def _get_spotify_page(user_id: int, limit: int, offset: int, local_owner, refres
     return _refresh_spotify_page(user_id, limit, offset, local_owner), False
 
 
+def _refresh_soundcloud_page(user_id: int, limit: int, offset: int, local_owner):
+    playlists = soundcloud_service.get_playlists(
+        user_id=user_id,
+        limit=limit,
+        offset=offset,
+        local_owner=local_owner,
+        config=_config,
+    )
+    if playlists is not None:
+        _write_cached_page(user_id, "soundcloud", limit, offset, playlists)
+    return playlists
+
+
+def _get_soundcloud_page(user_id: int, limit: int, offset: int, local_owner, refresh_cached=True):
+    cached = _read_cached_page(user_id, "soundcloud", limit, offset)
+    refresh_key = f"soundcloud-page-{user_id}-{offset}-{limit}"
+    if cached is not None:
+        if refresh_cached and bool(_config("cache.refresh_in_background", True)):
+            _start_refresh(refresh_key, _refresh_soundcloud_page, user_id, limit, offset, local_owner)
+        return cached, True
+    return _refresh_soundcloud_page(user_id, limit, offset, local_owner), False
+
+
 @api.get("/playlists/{user_id}")
 def get_playlists(
     user_id: int,
@@ -345,6 +371,13 @@ def get_playlists(
         if not include_private:
             spotify_playlists = [playlist for playlist in spotify_playlists if not playlist["private"]]
         response.extend(spotify_playlists)
+
+    if "soundcloud" in requested_services:
+        soundcloud_playlists, _ = _get_soundcloud_page(user_id, limit, offset, user)
+        soundcloud_playlists = soundcloud_playlists or []
+        if not include_private:
+            soundcloud_playlists = [playlist for playlist in soundcloud_playlists if not playlist["private"]]
+        response.extend(soundcloud_playlists)
     
     log(f"GET /playlists/{user_id}: returning response", "debug")
     
@@ -434,6 +467,7 @@ def stream_playlists(
 
     limit, offset, requested_services = _resolve_options(limit, offset, services)
     resolved_spotify_offset = offset if spotify_offset is None else spotify_offset
+    resolved_soundcloud_offset = offset
     if resolved_spotify_offset < 0:
         raise HTTPException(status_code=400, detail="spotify_offset must be at least 0")
     include_private = token_user_id == resolved_user_id
@@ -445,6 +479,7 @@ def stream_playlists(
             limit=limit,
             offset=offset,
             spotify_offset=resolved_spotify_offset,
+            soundcloud_offset=resolved_soundcloud_offset,
             user={"id": user["id"], "name": user["name"]},
         )
 
@@ -543,6 +578,51 @@ def stream_playlists(
                 log(f"Spotify playlist stream failed: {error}", "error")
                 yield _stream_event("error", service="spotify", message="Failed to load Spotify playlists")
 
+        if "soundcloud" in requested_services:
+            try:
+                load_all = bool(_config("soundcloud.load_all_playlists", True))
+                request_page_size = min(50, max(1, int(_config("soundcloud.request_page_size", 50))))
+                display_batch_size = max(1, int(_config("soundcloud.display_batch_size", 10)))
+                max_pages = max(1, int(_config("soundcloud.max_playlist_pages", 100)))
+                delay = max(0, int(_config("soundcloud.display_batch_delay_ms", 50))) / 1000
+                page_offset = resolved_soundcloud_offset
+                display_page = 0
+
+                for _page_number in range(max_pages):
+                    soundcloud_playlists, cached = _get_soundcloud_page(
+                        resolved_user_id,
+                        request_page_size,
+                        page_offset,
+                        user,
+                        refresh_cached=False,
+                    )
+                    if soundcloud_playlists is None:
+                        yield _stream_event("error", service="soundcloud", message="SoundCloud page request failed")
+                        break
+
+                    for batch_start in range(0, len(soundcloud_playlists), display_batch_size):
+                        batch = soundcloud_playlists[batch_start:batch_start + display_batch_size]
+                        for playlist in batch:
+                            if include_private or not playlist.get("private", False):
+                                yield _stream_event("playlist", playlist=playlist, cached=cached, page=display_page)
+                        yield _stream_event(
+                            "page",
+                            service="soundcloud",
+                            page=display_page,
+                            count=len(batch),
+                            cached=cached,
+                        )
+                        display_page += 1
+                        if delay:
+                            time.sleep(delay)
+
+                    if not load_all or len(soundcloud_playlists) < request_page_size:
+                        break
+                    page_offset += request_page_size
+            except Exception as error:
+                log(f"SoundCloud playlist stream failed: {error}", "error")
+                yield _stream_event("error", service="soundcloud", message="Failed to load SoundCloud playlists")
+
         yield _stream_event("done")
 
     return StreamingResponse(
@@ -587,7 +667,7 @@ def stream_playlist(
         raw_playlist_id, service = playlist_id, "local"
     if service == "omniplayr":
         service = "local"
-    if service not in {"local", "spotify"}:
+    if service not in {"local", "spotify", "soundcloud"}:
         raise HTTPException(status_code=400, detail=f"Unsupported playlist service: {service}")
 
     def generate():
@@ -616,18 +696,20 @@ def stream_playlist(
             yield _stream_event("done")
             return
 
-        cached_playlist = _read_json(
-            _cache_path(resolved_user_id, "spotify", raw_playlist_id, detail=True)
-        )
+        cached_playlist = _read_json(_cache_path(resolved_user_id, service, raw_playlist_id, detail=True))
         if cached_playlist and cached_playlist.get("private") and token_user_id != resolved_user_id:
-            yield _stream_event("error", service="spotify", message="Playlist not found")
+            yield _stream_event("error", service=service, message="Playlist not found")
             return
         if cached_playlist:
             cached_playlist = dict(cached_playlist)
             cached_playlist.pop("songs", None)
             yield _stream_event("playlist", playlist=cached_playlist, cached=True)
 
-        fresh_playlist = _refresh_spotify_detail(raw_playlist_id, resolved_user_id, user)
+        fresh_playlist = (
+            _refresh_spotify_detail(raw_playlist_id, resolved_user_id, user)
+            if service == "spotify"
+            else _refresh_soundcloud_detail(raw_playlist_id, resolved_user_id, user)
+        )
         if fresh_playlist and not (
             fresh_playlist.get("private") and token_user_id != resolved_user_id
         ):
@@ -635,19 +717,20 @@ def stream_playlist(
             fresh_playlist.pop("songs", None)
             yield _stream_event("playlist", playlist=fresh_playlist, cached=False)
         elif not cached_playlist:
-            yield _stream_event("error", service="spotify", message="Playlist not found")
+            yield _stream_event("error", service=service, message="Playlist not found")
             return
 
-        if not has_function("spotify@built-in", "iter_playlist_songs"):
+        provider_key = "spotify@built-in" if service == "spotify" else "soundcloud@built-in"
+        if not has_function(provider_key, "iter_playlist_songs"):
             yield _stream_event(
-                "error", service="spotify", message="Spotify song streaming is unavailable"
+                "error", service=service, message=f"{service.title()} song streaming is unavailable"
             )
             return
 
         try:
-            batch_size = max(1, int(_config("spotify.song_display_batch_size", 20)))
-            batch_delay = max(0, int(_config("spotify.song_display_batch_delay_ms", 10))) / 1000
-            cached_song_data = _read_song_cache(resolved_user_id, "spotify", raw_playlist_id)
+            batch_size = max(1, int(_config(f"{service}.song_display_batch_size", 20)))
+            batch_delay = max(0, int(_config(f"{service}.song_display_batch_delay_ms", 10))) / 1000
+            cached_song_data = _read_song_cache(resolved_user_id, service, raw_playlist_id)
             cached_songs = cached_song_data.get("songs") if cached_song_data else None
             emitted_images: set[str] = set()
 
@@ -663,7 +746,7 @@ def stream_playlist(
                         if cached_songs is None and len(cache_target) % batch_size == 0:
                             _write_song_cache(
                                 resolved_user_id,
-                                "spotify",
+                                service,
                                 raw_playlist_id,
                                 cache_target,
                                 complete=False,
@@ -699,23 +782,24 @@ def stream_playlist(
             if cached_songs is not None:
                 yield from song_events(cached_songs, cached=True)
                 yield _stream_event(
-                    "songs_done", service="spotify", count=len(cached_songs), cached=True
+                    "songs_done", service=service, count=len(cached_songs), cached=True
                 )
 
             fresh_songs = []
-            live_songs = spotify_service.song_iterator(
-                raw_playlist_id, resolved_user_id, token_user_id, user, _config
-            )
+            if service == "spotify":
+                live_songs = spotify_service.song_iterator(raw_playlist_id, resolved_user_id, token_user_id, user, _config)
+            else:
+                live_songs = soundcloud_service.song_iterator(raw_playlist_id, resolved_user_id, token_user_id, user, _config)
             yield from song_events(live_songs, cached=False, cache_target=fresh_songs)
             _write_song_cache(
-                resolved_user_id, "spotify", raw_playlist_id, fresh_songs, complete=True
+                resolved_user_id, service, raw_playlist_id, fresh_songs, complete=True
             )
             yield _stream_event(
-                "songs_done", service="spotify", count=len(fresh_songs), cached=False
+                "songs_done", service=service, count=len(fresh_songs), cached=False
             )
         except Exception as error:
-            log(f"Spotify playlist songs stream failed: {error}", "error")
-            yield _stream_event("error", service="spotify", message="Failed to load Spotify songs")
+            log(f"{service.title()} playlist songs stream failed: {error}", "error")
+            yield _stream_event("error", service=service, message=f"Failed to load {service.title()} songs")
 
         yield _stream_event("done")
 
@@ -752,6 +836,12 @@ def get_playlist(user_id: int, playlist_id: str, auth=Depends(verify_auth), x_ac
 
     if service == "spotify":
         playlist = get_spotify_playlist(raw_playlist_id, user_id)
+        if not playlist or (playlist["private"] and token_user_id != user_id):
+            raise HTTPException(status_code=404, detail="Playlist not found")
+        return playlist
+
+    if service == "soundcloud":
+        playlist = get_soundcloud_playlist(raw_playlist_id, user_id)
         if not playlist or (playlist["private"] and token_user_id != user_id):
             raise HTTPException(status_code=404, detail="Playlist not found")
         return playlist
@@ -801,8 +891,43 @@ def get_spotify_playlist(playlist_id: str, user_id: int):
     return _refresh_spotify_detail_for_user(playlist_id, user_id)
 
 
+def _refresh_soundcloud_detail(playlist_id: str, user_id: int, local_owner):
+    playlist = soundcloud_service.refresh_detail(playlist_id, user_id, local_owner, _config)
+    if playlist is not None:
+        _write_json(_cache_path(user_id, "soundcloud", playlist_id, detail=True), playlist)
+    return playlist
+
+
+def _refresh_soundcloud_detail_for_user(playlist_id: str, user_id: int):
+    return _refresh_soundcloud_detail(playlist_id, user_id, get_account(user_id))
+
+
+def get_soundcloud_playlist(playlist_id: str, user_id: int):
+    cached = _read_json(_cache_path(user_id, "soundcloud", playlist_id, detail=True))
+    if isinstance(cached, dict):
+        if bool(_config("cache.refresh_in_background", True)):
+            _start_refresh(
+                f"soundcloud-detail-{user_id}-{playlist_id}",
+                _refresh_soundcloud_detail_for_user,
+                playlist_id,
+                user_id,
+            )
+        return cached
+    return _refresh_soundcloud_detail_for_user(playlist_id, user_id)
+
+
 def get_spotify_playlists(limit: int = 10, offset: int = 0, user_id: int = None, local_owner=None):
     return spotify_service.get_playlists(
+        limit=limit,
+        offset=offset,
+        user_id=user_id,
+        local_owner=local_owner,
+        config=_config,
+    )
+
+
+def get_soundcloud_playlists(limit: int = 10, offset: int = 0, user_id: int = None, local_owner=None):
+    return soundcloud_service.get_playlists(
         limit=limit,
         offset=offset,
         user_id=user_id,

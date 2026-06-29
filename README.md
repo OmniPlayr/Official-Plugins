@@ -47,14 +47,27 @@ Requires a Spotify Premium account and a Spotify Developer App with a registered
 
 ---
 
+### [`soundcloud@built-in`](./soundcloud@built-in/)
+
+**Type:** Full-stack (Backend + Frontend)  
+**Version:** Backend 1.0.0 / Frontend 1.0.0
+
+Play SoundCloud tracks inside OmniPlayr through the SoundCloud HTML5 Widget API. Connect a SoundCloud account to fetch metadata and private playlists through SoundCloud's OAuth API, with tokens refreshed automatically by the backend.
+
+Requires a SoundCloud developer app with a registered redirect URI, Client ID, and Client Secret.
+
+[Read more](./soundcloud@built-in/backend/README.md)
+
+---
+
 ### [`playlists@built-in`](./playlists@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend beta-0.1.1 / Frontend beta-0.2.1
+**Version:** Backend beta-0.1.2 / Frontend beta-0.2.1
 
 Create, browse, and stream playlists inside OmniPlayr. The plugin manages local OmniPlayr playlists, automatically creates a private Liked Songs playlist for each user, and includes collaborator metadata for local playlists.
 
-When `spotify@built-in` is installed and connected, Spotify playlists can appear beside local playlists. Playlist collections and individual playlist songs can be streamed incrementally, with disk caching for Spotify summaries, details, and song lists.
+When `spotify@built-in` or `soundcloud@built-in` is installed and connected, external playlists can appear beside local playlists. Playlist collections and individual playlist songs can be streamed incrementally, with disk caching for external summaries, details, and song lists.
 
 [Read more →](./playlists@built-in/backend/README.md)
 

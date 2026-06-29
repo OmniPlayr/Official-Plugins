@@ -1,0 +1,26 @@
+{
+  "name": "soundcloud",
+  "author": "built-in",
+  "version": "1.0.0",
+  "description": "Play SoundCloud tracks with OmniPlayr and surface your SoundCloud playlists.",
+  "type": "backend",
+  "repository": "https://github.com/OmniPlayr/Official-Plugins",
+  "homepage": "https://omniplayr.wokki20.nl",
+  "pythonDependencies": {
+    "requests": ">=2.28"
+  },
+  "icon": "icon.png",
+  "banner": "banner.png",
+  "changelog": "CHANGELOG.md",
+  "license": "LICENSE",
+  "readme": "README.md",
+  "contributors": [
+    {
+      "name": "wokki20",
+      "avatar": "https://avatars.githubusercontent.com/u/105733478?v=4",
+      "profile": "https://github.com/levkris"
+    }
+  ],
+  "min-dev-version": "2026.6.10",
+  "id": "soundcloud@built-in"
+}

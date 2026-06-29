@@ -1,0 +1,12 @@
+[api]
+base_url = "str # comment: Base URL for SoundCloud API requests"
+auth_base_url = "str # comment: Base URL for SoundCloud OAuth requests"
+
+[requests]
+timeout_seconds = "int # comment: Timeout for SoundCloud API and OAuth requests in seconds # liveupdate:true"
+
+[cache]
+playlist_ttl_seconds = "int # comment: Seconds to keep SoundCloud playlist pages in memory # liveupdate:true"
+
+[oauth]
+state_ttl_seconds = "int # comment: Seconds before a pending OAuth login state expires # liveupdate:true"

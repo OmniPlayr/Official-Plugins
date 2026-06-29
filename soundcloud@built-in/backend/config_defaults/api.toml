@@ -1,0 +1,12 @@
+[api]
+base_url = "https://api.soundcloud.com"
+auth_base_url = "https://secure.soundcloud.com"
+
+[requests]
+timeout_seconds = 10
+
+[cache]
+playlist_ttl_seconds = 30
+
+[oauth]
+state_ttl_seconds = 600

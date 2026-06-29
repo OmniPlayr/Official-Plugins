@@ -4,6 +4,14 @@ All notable changes to `playlists@built-in` are documented here. This changelog 
 
 ## [Unreleased]
 
+## [beta-0.1.2] - 2026-06-29
+
+### Added
+
+- Added SoundCloud playlist provider support through `soundcloud@built-in`.
+- Added SoundCloud playlist collection, detail, and song streaming cache support.
+- Added SoundCloud provider configuration options.
+
 ## [beta-0.1.1] - 2026-06-29
 
 ### Added
