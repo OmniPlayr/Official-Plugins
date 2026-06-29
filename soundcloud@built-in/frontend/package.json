@@ -2,7 +2,7 @@
   "id": "soundcloud@built-in",
   "name": "soundcloud",
   "author": "built-in",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Play SoundCloud tracks with OmniPlayr and surface your SoundCloud playlists.",
   "type": "frontend",
   "min-dev-version": "2026.6.19"

@@ -1,7 +1,7 @@
 {
   "name": "soundcloud",
   "author": "built-in",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Play SoundCloud tracks with OmniPlayr and surface your SoundCloud playlists.",
   "type": "backend",
   "repository": "https://github.com/OmniPlayr/Official-Plugins",

@@ -37,7 +37,7 @@ Supports `.mp3`, `.flac`, `.wav`, `.ogg`, `.m4a`, `.aac`, and `.opus`. Reads ful
 ### [`spotify@built-in`](./spotify@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend 1.1.6 / Frontend 1.1.6
+**Version:** Backend 1.1.7 / Frontend 1.1.7
 
 Stream Spotify directly inside OmniPlayr. Connect your Spotify account once and OmniPlayr registers itself as a native Spotify playback device. Audio plays through the official Web Playback SDK, metadata is fetched via the Spotify Web API, and tokens are refreshed automatically in the background.
 
@@ -50,7 +50,7 @@ Requires a Spotify Premium account and a Spotify Developer App with a registered
 ### [`soundcloud@built-in`](./soundcloud@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend 1.0.3 / Frontend 1.0.3
+**Version:** Backend 1.0.4 / Frontend 1.0.4
 
 Play public SoundCloud URLs inside OmniPlayr through the SoundCloud HTML5 Widget API. Connect a SoundCloud account to fetch private playlists and account playlists through SoundCloud's OAuth API, with tokens refreshed automatically by the backend.
 
