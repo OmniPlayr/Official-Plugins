@@ -2,6 +2,12 @@
 
 All notable changes to `soundcloud@built-in` are documented here. This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses [Semantic Versioning](https://semver.org/).
 
+## [1.0.2] - 2026-06-29
+
+### Changed
+
+- Frontend: Removed the setup input focus glow and placeholder color fallback.
+
 ## [1.0.1] - 2026-06-29
 
 ### Added

@@ -1,4 +1,3 @@
-import { createRoot } from 'react-dom/client';
 import { createElement } from 'react';
 import { getStatus, disconnect } from './auth';
 import { loadSdk } from './sdk';
@@ -6,23 +5,21 @@ import { player } from '../../modules/player';
 import SpotifySourcePlugin from './SpotifySourcePlugin';
 import SpotifySetup from './SpotifySetup';
 import { registerPluginsMenuItem } from '../../modules/plugins';
+import { closePopup, createPopup } from '../../modules/PopupContext';
 import { LogIn, LogOut } from 'lucide-react';
 
 function mountSetupPopup() {
-    if (document.getElementById('spotify-setup-root')) return;
+    const popupId = 'spotify-setup';
 
-    const container = document.createElement('div');
-    container.id = 'spotify-setup-root';
-    document.body.appendChild(container);
-
-    const root = createRoot(container);
-
-    function unmount() {
-        root.unmount();
-        container.remove();
-    }
-
-    root.render(createElement(SpotifySetup, { onDone: unmount }));
+    createPopup({
+        id: popupId,
+        title: 'Spotify',
+        subtitle: 'Connect your Spotify account',
+        close_button: true,
+        mobileFullscreen: true,
+        group: 'spotify-setup',
+        content: createElement(SpotifySetup, { onDone: () => closePopup(popupId) }),
+    });
 }
 
 export function init() {
@@ -42,7 +39,7 @@ export function init() {
                 icon: LogIn,
                 label: 'Log In',
                 function: mountSetupPopup,
-                needsInteraction: true
+                needsInteraction: true,
             });
         }
     });

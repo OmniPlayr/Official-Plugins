@@ -4,6 +4,13 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [1.1.6] - 2026-06-29
+
+### Changed
+
+- Frontend: Switched the Spotify setup UI to OmniPlayr's shared `PopupContext`.
+- Frontend: Removed the setup input focus glow and placeholder color fallback.
+
 ## [1.1.3] - 2026-06-29
 
 ### Changed
