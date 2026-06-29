@@ -100,9 +100,9 @@ export default class SpotifySourcePlugin implements SourcePlugin {
             throw error;
         }
 
-        sdkSetVolume(this._volume);
+        await sdkSetVolume(this._volume);
 
-        if (!autoplay) sdkPause();
+        if (!autoplay) await sdkPause();
 
         await waitForSpotifyTrackState(songId, state => {
             const track = state.track_window?.current_track;
@@ -146,10 +146,10 @@ export default class SpotifySourcePlugin implements SourcePlugin {
         });
     }
 
-    pause() { sdkPause(); }
-    resume() { sdkResume(); }
-    activate() { sdkActivateElement(); }
-    seek(seconds: number) { sdkSeek(seconds * 1000); }
+    pause() { sdkPause().catch(error => console.warn('[spotify@built-in] Failed to pause Spotify playback.', error)); }
+    resume() { sdkResume().catch(error => console.warn('[spotify@built-in] Failed to resume Spotify playback.', error)); }
+    activate() { sdkActivateElement()?.catch(error => console.warn('[spotify@built-in] Failed to activate Spotify player.', error)); }
+    seek(seconds: number) { sdkSeek(seconds * 1000).catch(error => console.warn('[spotify@built-in] Failed to seek Spotify playback.', error)); }
 
     setVolume(fraction: number) {
         this._volume = fraction;

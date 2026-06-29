@@ -41,13 +41,14 @@ export interface SpotifyPlayer {
         event: 'initialization_error' | 'authentication_error' | 'account_error' | 'playback_error',
         cb: (payload: { message: string }) => void
     ): void;
+    addListener(event: 'autoplay_failed', cb: () => void): void;
     addListener(event: 'player_state_changed', cb: (state: SpotifyState | null) => void): void;
-    connect(): void;
+    connect(): Promise<boolean>;
     activateElement(): Promise<void>;
-    pause(): void;
-    resume(): void;
-    seek(ms: number): void;
-    setVolume(fraction: number): void;
+    pause(): Promise<void>;
+    resume(): Promise<void>;
+    seek(ms: number): Promise<void>;
+    setVolume(fraction: number): Promise<void>;
     getVolume(): Promise<number>;
     disconnect(): void;
 }
@@ -156,6 +157,10 @@ export async function loadSdk(): Promise<boolean> {
             spotifyConsoleError(`Spotify SDK playback error: ${message}`);
         });
 
+        sdkPlayer.addListener('autoplay_failed', () => {
+            spotifyConsoleError('Spotify autoplay was blocked by the browser.');
+        });
+
         sdkPlayer.addListener('player_state_changed', notifyState);
 
         sdkPlayer.connect();
@@ -179,9 +184,9 @@ export function isSdkLoadStarted() { return sdkLoadStarted; }
 export async function sdkPlay(trackId: string) {
     await waitReady();
     const token = await getValidToken();
-    if (!token || !deviceId) throw new Error('Spotify not ready');
+    if (!token || !deviceId || !sdkPlayer) throw new Error('Spotify not ready');
 
-    await sdkPlayer?.activateElement();
+    await sdkPlayer.activateElement();
 
     const res = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
         method: 'PUT',
@@ -190,17 +195,26 @@ export async function sdkPlay(trackId: string) {
     });
 
     if (!res.ok && res.status !== 204) {
-        throw new Error(`Spotify play failed: ${res.status}`);
+        let details = '';
+        try {
+            details = await res.text();
+        } catch {
+            details = '';
+        }
+
+        throw new Error(`Spotify play failed: ${res.status}${details ? ` ${details}` : ''}`);
     }
 }
 
-export function sdkPause() { sdkPlayer?.pause(); }
+export async function sdkPause() { await sdkPlayer?.pause(); }
+
 export async function sdkResume() {
     await sdkPlayer?.activateElement();
-    sdkPlayer?.resume();
+    await sdkPlayer?.resume();
 }
-export function sdkSeek(ms: number) { sdkPlayer?.seek(ms); }
-export function sdkSetVolume(fraction: number) { sdkPlayer?.setVolume(fraction); }
+
+export async function sdkSeek(ms: number) { await sdkPlayer?.seek(ms); }
+export async function sdkSetVolume(fraction: number) { await sdkPlayer?.setVolume(fraction); }
 export function sdkActivateElement() { return sdkPlayer?.activateElement(); }
 
 export function startVolumePolling(onChange: (v: number) => void, sdkPlayer: SpotifyPlayer | null | undefined) {
