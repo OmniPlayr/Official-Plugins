@@ -50,7 +50,7 @@ Requires a Spotify Premium account and a Spotify Developer App with a registered
 ### [`soundcloud@built-in`](./soundcloud@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend 1.0.1 / Frontend 1.0.2
+**Version:** Backend 1.0.2 / Frontend 1.0.2
 
 Play public SoundCloud URLs inside OmniPlayr through the SoundCloud HTML5 Widget API. Connect a SoundCloud account to fetch private playlists and account playlists through SoundCloud's OAuth API, with tokens refreshed automatically by the backend.
 
