@@ -50,7 +50,7 @@ Requires a Spotify Premium account and a Spotify Developer App with a registered
 ### [`playlists@built-in`](./playlists@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend beta-0.1.0 / Frontend beta-0.1.0
+**Version:** Backend beta-0.1.0 / Frontend beta-0.2.0
 
 Create, browse, and stream playlists inside OmniPlayr. The plugin manages local OmniPlayr playlists, automatically creates a private Liked Songs playlist for each user, and includes collaborator metadata for local playlists.
 
@@ -62,8 +62,8 @@ When `spotify@built-in` is installed and connected, Spotify playlists can appear
 
 ### [`artists@built-in`](./artists@built-in/)
 
-**Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend 1.1.1 / Frontend 1.0.0
+**Type:** Full-stack (Backend + Frontend)
+**Version:** Backend 1.1.3 / Frontend 1.0.0
 
 Adds artist and album profile pages to OmniPlayr. Click on any artist or album name in the player and get a full profile: biography, genres, discography, tracklists, cover art, and more.
 

@@ -101,7 +101,38 @@ cache_dir = "/user_storage/artists-cache"
 
 ## API Endpoints
 
-Both endpoints require authentication.
+These endpoints require authentication.
+
+### `GET /api/plugin/artists/exists`
+
+Checks whether an artist exists without returning the full artist or album profile.
+
+| Query param | Type | Description |
+|-------------|------|-------------|
+| `artist` | `string` | **Required** - the artist name to check |
+| `album` | `string` | Optional - an album/release name to verify for that artist |
+| `song` | `string` | Optional - a song name to verify for that artist, and for the album when `album` is also provided |
+| `no_cache` | `bool` | Skip the disk cache and check MusicBrainz directly |
+
+**Response fields:** `exists`, `artist_exists`, `album_exists`, `song_exists`, `accuracy`, `elapsed_ms`, `from_cache`
+
+`exists` mirrors `artist_exists`. `album_exists` and `song_exists` are `null` when their matching query parameter is not provided.
+
+Example:
+
+```json
+{
+  "exists": true,
+  "artist_exists": true,
+  "album_exists": true,
+  "song_exists": true,
+  "from_cache": false,
+  "accuracy": 0.98,
+  "elapsed_ms": 184
+}
+```
+
+---
 
 ### `GET /plugin/artist/{artist}`
 

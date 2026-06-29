@@ -4,6 +4,12 @@ All notable changes to `artists@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-06-23
+
+### Added
+
+- Added `GET /api/plugin/artists/exists` for lightweight artist existence checks with optional album and song matching.
+
 ## [1.1.2] - 2026-06-22
 
 ### Fixed

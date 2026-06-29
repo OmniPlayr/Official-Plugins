@@ -32,4 +32,7 @@
     "playlists.playlist.context.copy-link": "Copy Link",
     "playlists.playlist.context.copy-embed": "Copy Embed",
     "playlists.playlist.context.copied": "Copied",
+
+    "playlists.playlist.context.album": "View Album",
+    "playlists.playlist.context.artist": "View Artist",
 }

@@ -4,7 +4,7 @@ import { getAccount } from "../../modules/account";
 import { player, type QueueItem } from "../../modules/player";
 import translations from ".";
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Check, ChevronLeft, ChevronRight, Clock, Code2, Copy, ListPlus, LoaderCircle, Pause, Play, Search, Share2, Shuffle, Volume2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Clock, Code2, Copy, Disc3, ListPlus, LoaderCircle, Pause, Play, Search, Share2, Shuffle, User, Volume2 } from "lucide-react";
 import { Tooltip } from "react-tooltip";
 import { useIsMobile } from "../../main";
 import { closePopup, createPopup } from "../../modules/PopupContext";
@@ -12,6 +12,8 @@ import './styles/Playlist.css';
 import liked from './assets/liked.svg';
 import unknownArt from '../../assets/images/unknown-art.svg';
 import unknownAvatar from '../../assets/images/unknown-profile.svg';
+import { hasFrontendPlugin } from "../../modules/plugins";
+import { navigate } from "../../modules/navigate";
 
 type UserAccount = {
     id: string | number;
@@ -50,6 +52,12 @@ export type PlaylistSong = {
     metadata: PlaylistSongMetadata;
 };
 
+type ArtistPageInfo = {
+    artist_exists: boolean;
+    album_exists: boolean;
+    artist_url: string;
+    album_url: string;
+};
 
 type Playlist = {
     id: string | number;
@@ -98,6 +106,14 @@ const SONG_LONG_PRESS_MOVE_TOLERANCE = 12;
 const SONG_ACTIONS_POPUP_GROUP = 'playlist-song-actions';
 const SONG_ACTIONS_POPUP_ID = 'playlist-song-actions-main';
 const SONG_SHARE_POPUP_ID = 'playlist-song-actions-share';
+const EMPTY_ARTIST_PAGE: ArtistPageInfo = {
+    artist_exists: false,
+    album_exists: false,
+    artist_url: '',
+    album_url: '',
+};
+const artistPageCache = new Map<string, ArtistPageInfo>();
+const artistPageRequests = new Map<string, Promise<ArtistPageInfo>>();
 
 function formatDateAdded(value: string | null, locale?: string) {
     if (!value) return '\u2014';
@@ -369,6 +385,190 @@ function getSongEmbed(song: PlaylistSong) {
     return null;
 }
 
+async function hasArtistsPage(artist: string, album: string, song: string): Promise<ArtistPageInfo> {
+    const cacheKey = `${artist}\u0000${album}\u0000${song}`;
+    const cached = artistPageCache.get(cacheKey);
+    if (cached) return cached;
+
+    const pending = artistPageRequests.get(cacheKey);
+    if (pending) return pending;
+
+    if (!hasFrontendPlugin('artists@built-in')) {
+        artistPageCache.set(cacheKey, EMPTY_ARTIST_PAGE);
+        return EMPTY_ARTIST_PAGE;
+    }
+
+    const request = (async () => {
+        const pageExists = await api(`/plugin/artists/exists?artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}&song=${encodeURIComponent(song)}`) as ArtistPageInfo;
+
+        return {
+            artist_exists: pageExists.artist_exists as boolean,
+            album_exists: pageExists.album_exists as boolean,
+            artist_url: '/artist/' + encodeURIComponent(artist),
+            album_url: '/artist/' + encodeURIComponent(artist) + '/' + encodeURIComponent(album),
+        };
+    })();
+
+    artistPageRequests.set(cacheKey, request);
+
+    try {
+        const artistPage = await request;
+        artistPageCache.set(cacheKey, artistPage);
+        return artistPage;
+    } finally {
+        artistPageRequests.delete(cacheKey);
+    }
+}
+
+function getCachedArtistPage(song: PlaylistSong) {
+    return artistPageCache.get(`${song.metadata.artist}\u0000${song.metadata.album}\u0000${song.metadata.title}`) ?? null;
+}
+
+function PlaylistSongContextMenu({
+    menu,
+    copiedContextAction,
+    addSongToQueue,
+    copyContextValue,
+}: {
+    menu: NonNullable<SongContextMenu>;
+    copiedContextAction: string | null;
+    addSongToQueue: (song: PlaylistSong) => void;
+    copyContextValue: (action: string, value: string) => void;
+}) {
+    const { t } = translations.useTranslation();
+    const shareLink = getSongShareLink(menu.song);
+    const embed = getSongEmbed(menu.song);
+    const canShare = menu.song.source_type !== 'local' && (shareLink || embed);
+    const [artistPage, setArtistPage] = useState<ArtistPageInfo>(() => getCachedArtistPage(menu.song) ?? EMPTY_ARTIST_PAGE);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        hasArtistsPage(menu.song.metadata.artist, menu.song.metadata.album, menu.song.metadata.title).then((page) => {
+            if (!cancelled) setArtistPage(page);
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [menu.song]);
+
+    return (
+        <div
+            className='playlist-song-context-menu'
+            style={{ left: menu.x, top: menu.y }}
+            onClick={(event) => event.stopPropagation()}
+        >
+            <button className='playlist-song-context-menu-item' onClick={() => addSongToQueue(menu.song)}>
+                <ListPlus className='playlist-song-context-menu-icon' />
+                <span>{t('playlists.playlist.context.queue')}</span>
+            </button>
+            {artistPage.artist_exists || artistPage.album_exists || canShare ? <div className='playlist-song-context-menu-separator' /> : null}
+            {artistPage.artist_exists && (
+                <button className='playlist-song-context-menu-item' onClick={() => navigate(artistPage.artist_url)}>
+                    <User className='playlist-song-context-menu-icon' />
+                    <span>{t('playlists.playlist.context.artist')}</span>
+                </button>
+            )}
+            {artistPage.album_exists && (
+                <button className='playlist-song-context-menu-item' onClick={() => navigate(artistPage.album_url)}>
+                    <Disc3 className='playlist-song-context-menu-icon' />
+                    <span>{t('playlists.playlist.context.album')}</span>
+                </button>
+            )}
+            {canShare && (
+                <div className='playlist-song-context-menu-submenu'>
+                    <button className='playlist-song-context-menu-item playlist-song-context-menu-submenu-trigger'>
+                        <Share2 className='playlist-song-context-menu-icon' />
+                        <span>{t('playlists.playlist.context.share')}</span>
+                        <span className='playlist-song-context-menu-arrow'><ChevronRight className="playlist-song-context-menu-arrow-icon" /></span>
+                    </button>
+                    <div className='playlist-song-context-submenu'>
+                        {shareLink && (
+                            <button className='playlist-song-context-menu-item' onClick={() => copyContextValue('link', shareLink)}>
+                                {copiedContextAction === 'link' ? <Check className='playlist-song-context-menu-icon' /> : <Copy className='playlist-song-context-menu-icon' />}
+                                <span>{copiedContextAction === 'link' ? t('playlists.playlist.context.copied') : t('playlists.playlist.context.copy-link')}</span>
+                            </button>
+                        )}
+                        {embed && (
+                            <button className='playlist-song-context-menu-item' onClick={() => copyContextValue('embed', embed)}>
+                                {copiedContextAction === 'embed' ? <Check className='playlist-song-context-menu-icon' /> : <Code2 className='playlist-song-context-menu-icon' />}
+                                <span>{copiedContextAction === 'embed' ? t('playlists.playlist.context.copied') : t('playlists.playlist.context.copy-embed')}</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function PlaylistSongActionsPopup({
+    song,
+    addSongToQueue,
+    closeSongActionsPopup,
+    openSongSharePopup,
+}: {
+    song: PlaylistSong;
+    addSongToQueue: (song: PlaylistSong) => void;
+    closeSongActionsPopup: () => void;
+    openSongSharePopup: (song: PlaylistSong) => void;
+}) {
+    const { t } = translations.useTranslation();
+    const shareLink = getSongShareLink(song);
+    const embed = getSongEmbed(song);
+    const canShare = song.source_type !== 'local' && (shareLink || embed);
+    const [artistPage, setArtistPage] = useState<ArtistPageInfo>(() => getCachedArtistPage(song) ?? EMPTY_ARTIST_PAGE);
+
+    useEffect(() => {
+        if (getCachedArtistPage(song)) return;
+
+        let cancelled = false;
+
+        hasArtistsPage(song.metadata.artist, song.metadata.album, song.metadata.title).then((page) => {
+            if (!cancelled) setArtistPage(page);
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [song]);
+
+    return (
+        <div className='playlist-song-popup-actions'>
+            <button
+                className='playlist-song-popup-action'
+                onClick={() => {
+                    addSongToQueue(song);
+                    closeSongActionsPopup();
+                }}
+            >
+                <ListPlus className='playlist-song-popup-action-icon' />
+                <span>{t('playlists.playlist.context.queue')}</span>
+            </button>
+            {artistPage.artist_exists && (
+                <button className='playlist-song-popup-action' onClick={() => navigate(artistPage.artist_url)}>
+                    <User className='playlist-song-popup-action-icon' />
+                    <span>{t('playlists.playlist.context.artist')}</span>
+                </button>
+            )}
+            {artistPage.album_exists && (
+                <button className='playlist-song-popup-action' onClick={() => navigate(artistPage.album_url)}>
+                    <Disc3 className='playlist-song-popup-action-icon' />
+                    <span>{t('playlists.playlist.context.album')}</span>
+                </button>
+            )}
+            {canShare && (
+                <button className='playlist-song-popup-action' onClick={() => openSongSharePopup(song)}>
+                    <Share2 className='playlist-song-popup-action-icon' />
+                    <span>{t('playlists.playlist.context.share')}</span>
+                    <ChevronRight className='playlist-song-popup-action-chevron' />
+                </button>
+            )}
+        </div>
+    );
+}
+
 function Playlist() {
     const { id } = useParams() as { id: string | number };
     const { t, i18n } = translations.useTranslation();
@@ -635,10 +835,6 @@ function Playlist() {
     };
 
     const openSongActionsPopup = (song: PlaylistSong) => {
-        const shareLink = getSongShareLink(song);
-        const embed = getSongEmbed(song);
-        const canShare = song.source_type !== 'local' && (shareLink || embed);
-
         createPopup({
             id: SONG_ACTIONS_POPUP_ID,
             group: SONG_ACTIONS_POPUP_GROUP,
@@ -648,25 +844,12 @@ function Playlist() {
             close_button: true,
             mobileFullscreen: false,
             content: (
-                <div className='playlist-song-popup-actions'>
-                    <button
-                        className='playlist-song-popup-action'
-                        onClick={() => {
-                            addSongToQueue(song);
-                            closeSongActionsPopup();
-                        }}
-                    >
-                        <ListPlus className='playlist-song-popup-action-icon' />
-                        <span>{t('playlists.playlist.context.queue')}</span>
-                    </button>
-                    {canShare && (
-                        <button className='playlist-song-popup-action' onClick={() => openSongSharePopup(song)}>
-                            <Share2 className='playlist-song-popup-action-icon' />
-                            <span>{t('playlists.playlist.context.share')}</span>
-                            <ChevronRight className='playlist-song-popup-action-chevron' />
-                        </button>
-                    )}
-                </div>
+                <PlaylistSongActionsPopup
+                    song={song}
+                    addSongToQueue={addSongToQueue}
+                    closeSongActionsPopup={closeSongActionsPopup}
+                    openSongSharePopup={openSongSharePopup}
+                />
             ),
         });
     };
@@ -869,58 +1052,15 @@ function Playlist() {
                             })
                         }
 
-                        {
-                            songContextMenu && (() => {
-                                const shareLink = getSongShareLink(songContextMenu.song);
-                                const embed = getSongEmbed(songContextMenu.song);
-                                const canShare = songContextMenu.song.source_type !== 'local' && (shareLink || embed);
-
-                                return (
-                                    <div
-                                        className='playlist-song-context-menu'
-                                        style={{ left: songContextMenu.x, top: songContextMenu.y }}
-                                        onClick={(event) => event.stopPropagation()}
-                                    >
-                                        <button className='playlist-song-context-menu-item' onClick={() => addSongToQueue(songContextMenu.song)}>
-                                            <ListPlus className='playlist-song-context-menu-icon' />
-                                            <span>{t('playlists.playlist.context.queue')}</span>
-                                        </button>
-                                        {
-                                            canShare && (
-                                                <>
-                                                    <div className='playlist-song-context-menu-separator' />
-                                                    <div className='playlist-song-context-menu-submenu'>
-                                                        <button className='playlist-song-context-menu-item playlist-song-context-menu-submenu-trigger'>
-                                                            <Share2 className='playlist-song-context-menu-icon' />
-                                                            <span>{t('playlists.playlist.context.share')}</span>
-                                                            <span className='playlist-song-context-menu-arrow'><ChevronRight className="playlist-song-context-menu-arrow-icon" /></span>
-                                                        </button>
-                                                        <div className='playlist-song-context-submenu'>
-                                                            {
-                                                                shareLink && (
-                                                                    <button className='playlist-song-context-menu-item' onClick={() => copyContextValue('link', shareLink)}>
-                                                                        {copiedContextAction === 'link' ? <Check className='playlist-song-context-menu-icon' /> : <Copy className='playlist-song-context-menu-icon' />}
-                                                                        <span>{copiedContextAction === 'link' ? t('playlists.playlist.context.copied') : t('playlists.playlist.context.copy-link')}</span>
-                                                                    </button>
-                                                                )
-                                                            }
-                                                            {
-                                                                embed && (
-                                                                    <button className='playlist-song-context-menu-item' onClick={() => copyContextValue('embed', embed)}>
-                                                                        {copiedContextAction === 'embed' ? <Check className='playlist-song-context-menu-icon' /> : <Code2 className='playlist-song-context-menu-icon' />}
-                                                                        <span>{copiedContextAction === 'embed' ? t('playlists.playlist.context.copied') : t('playlists.playlist.context.copy-embed')}</span>
-                                                                    </button>
-                                                                )
-                                                            }
-                                                        </div>
-                                                    </div>
-                                                </>
-                                            )
-                                        }
-                                    </div>
-                                );
-                            })()
-                        }
+                        {songContextMenu && (
+                            <PlaylistSongContextMenu
+                                key={`${songContextMenu.song.source_type}:${songContextMenu.song.song_id}:${songContextMenu.x}:${songContextMenu.y}`}
+                                menu={songContextMenu}
+                                copiedContextAction={copiedContextAction}
+                                addSongToQueue={addSongToQueue}
+                                copyContextValue={copyContextValue}
+                            />
+                        )}
                     </tbody>
                 </table>
             </div>

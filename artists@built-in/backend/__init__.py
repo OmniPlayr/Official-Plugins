@@ -3,6 +3,7 @@ from api.helpers.plugins import api
 from api.helpers.server import verify_auth
 from .artist import get_artist_info
 from .album import get_album_info
+from .exists import check_artist_exists
 
 @api.get("/artist/{artist}")
 def browse_music(
@@ -28,3 +29,15 @@ def browse_album(
     if not auth:
         raise HTTPException(status_code=401, detail="Unauthorized")
     return get_album_info(album, artist_name=artist, song_name=song, release_type=type, no_cache=no_cache)
+
+@api.get("/artists/exists")
+def artist_exists(
+    artist: str = Query(...),
+    album: str | None = Query(default=None),
+    song: str | None = Query(default=None),
+    no_cache: bool = Query(default=False),
+    auth=Depends(verify_auth),
+):
+    if not auth:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return check_artist_exists(artist, album_name=album, song_name=song, no_cache=no_cache)
