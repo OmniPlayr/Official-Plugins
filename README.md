@@ -37,7 +37,7 @@ Supports `.mp3`, `.flac`, `.wav`, `.ogg`, `.m4a`, `.aac`, and `.opus`. Reads ful
 ### [`spotify@built-in`](./spotify@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend 1.1.3 / Frontend 1.1.3
+**Version:** Backend 1.1.3 / Frontend 1.1.4
 
 Stream Spotify directly inside OmniPlayr. Connect your Spotify account once and OmniPlayr registers itself as a native Spotify playback device. Audio plays through the official Web Playback SDK, metadata is fetched via the Spotify Web API, and tokens are refreshed automatically in the background.
 

@@ -43,6 +43,7 @@ export interface SpotifyPlayer {
     ): void;
     addListener(event: 'player_state_changed', cb: (state: SpotifyState | null) => void): void;
     connect(): void;
+    activateElement(): Promise<void>;
     pause(): void;
     resume(): void;
     seek(ms: number): void;
@@ -180,6 +181,8 @@ export async function sdkPlay(trackId: string) {
     const token = await getValidToken();
     if (!token || !deviceId) throw new Error('Spotify not ready');
 
+    await sdkPlayer?.activateElement();
+
     const res = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -192,9 +195,13 @@ export async function sdkPlay(trackId: string) {
 }
 
 export function sdkPause() { sdkPlayer?.pause(); }
-export function sdkResume() { sdkPlayer?.resume(); }
+export async function sdkResume() {
+    await sdkPlayer?.activateElement();
+    sdkPlayer?.resume();
+}
 export function sdkSeek(ms: number) { sdkPlayer?.seek(ms); }
 export function sdkSetVolume(fraction: number) { sdkPlayer?.setVolume(fraction); }
+export function sdkActivateElement() { return sdkPlayer?.activateElement(); }
 
 export function startVolumePolling(onChange: (v: number) => void, sdkPlayer: SpotifyPlayer | null | undefined) {
     if (volumeInterval || !sdkPlayer) return;

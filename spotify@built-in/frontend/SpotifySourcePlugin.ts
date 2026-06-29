@@ -1,6 +1,6 @@
 import type { SourcePlugin, TrackMetadata } from '../../modules/player';
 import { getVolumeStorage } from '../../modules/player';
-import { sdkPlay, sdkPause, sdkResume, sdkSeek, sdkSetVolume, onStateChange, getState, startVolumePolling, stopVolumePolling } from './sdk';
+import { sdkPlay, sdkPause, sdkResume, sdkSeek, sdkSetVolume, sdkActivateElement, onStateChange, getState, startVolumePolling, stopVolumePolling } from './sdk';
 import type { SpotifyState } from './sdk';
 
 const VOLUME_STORAGE_KEY = 'player_volume';
@@ -148,6 +148,7 @@ export default class SpotifySourcePlugin implements SourcePlugin {
 
     pause() { sdkPause(); }
     resume() { sdkResume(); }
+    activate() { sdkActivateElement(); }
     seek(seconds: number) { sdkSeek(seconds * 1000); }
 
     setVolume(fraction: number) {
