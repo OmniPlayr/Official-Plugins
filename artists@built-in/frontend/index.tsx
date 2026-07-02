@@ -1,20 +1,21 @@
-import { registerPluginsMenuItem, registerRoute } from '../../modules/plugins';
 import ArtistPage from './ArtistPage';
-import { modify } from '../../modules/plugins';
 import { artistCache } from './artistCache';
 import './main.css';
-import api from '../../modules/api';
-import { navigate } from '../../modules/navigate';
-import { getAccount } from '../../modules/account';
-import AccountSelect from '../../AccountSelect';
-import { Navigate } from 'react-router-dom';
 import AlbumPage from './AlbumPage';
 import { albumCache } from './albumCache';
-import { createPopup } from '../../modules/PopupContext';
-import i18n from '../../i18n';
 import { KeyRound } from 'lucide-react';
 import ArtistsTokenSetup from './ArtistsTokenSetup';
 import { getStatus } from './auth';
+import translations, { PLUGIN_ID } from './translations';
+
+import {
+    modify,
+    api,
+    navigate,
+    createPopup,
+    registerPluginsMenuItem,
+    registerRoute
+} from '@omniplayr/plugins';
 
 const isMobile = window.innerWidth < 768
 const selector = isMobile ? 'Player-Fullscreen.player-fullscreen-artist' : 'Player.player-track-artist'
@@ -29,17 +30,16 @@ function isTokenValid(): boolean {
     return false;
 }
 
-const account_id = getAccount() || null;
 let tokenSet = false;
 let isAdmin = false;
 
 function openTokenPopup() {
     createPopup({
         id: 'artists-token-popup',
-        title: i18n.t(tokenSet ? 'token.popup.title.edit' : 'token.popup.title.set', { ns: 'artists@built-in' }),
+        title: translations.t(tokenSet ? 'token.popup.title.edit' : 'token.popup.title.set'),
         subtitle: tokenSet
-            ? i18n.t('token.popup.subtitle.configured', { ns: 'artists@built-in' })
-            : i18n.t('token.popup.subtitle.missing', { ns: 'artists@built-in' }),
+            ? translations.t('token.popup.subtitle.configured')
+            : translations.t('token.popup.subtitle.missing'),
         close_button: true,
         content: <ArtistsTokenSetup tokenSet={tokenSet} isAdmin={isAdmin} onDone={() => location.reload()} />,
     });
@@ -49,18 +49,18 @@ export function init() {
     getStatus().then(status => {
         tokenSet = status.token_set;
         isAdmin = status.is_admin;
-        registerPluginsMenuItem('artists@built-in', {
+        registerPluginsMenuItem(PLUGIN_ID, {
             icon: KeyRound,
             label: tokenSet
-                ? i18n.t('token.menu.edit', { ns: 'artists@built-in' })
-                : i18n.t('token.menu.set', { ns: 'artists@built-in' }),
+                ? translations.t('token.menu.edit')
+                : translations.t('token.menu.set'),
             function: openTokenPopup,
             needsInteraction: !tokenSet,
         });
     }).catch(() => {
-        registerPluginsMenuItem('artists@built-in', {
+        registerPluginsMenuItem(PLUGIN_ID, {
             icon: KeyRound,
-            label: i18n.t('token.menu.set', { ns: 'artists@built-in' }),
+            label: translations.t('token.menu.set'),
             function: openTokenPopup,
             needsInteraction: true,
         });
@@ -68,26 +68,18 @@ export function init() {
 }
 
 registerRoute({ path: '/artist/:artist', component: () =>
-    isTokenValid()
-        ? account_id
-        ? <ArtistPage />
-        : <AccountSelect onAccountSelected={() => {}}/>
-        : <Navigate to="/login" />
+    <ArtistPage />
 });
 
 registerRoute({ path: '/artist/:artist/:album', component: () =>
-    isTokenValid()
-        ? account_id
-        ? <AlbumPage />
-        : <AccountSelect onAccountSelected={() => {}}/>
-        : <Navigate to="/login" />
+    <AlbumPage />
 });
 
 function getCurrentSong(): string | undefined {
     return document.querySelector('.player-track-title')?.textContent?.trim() || undefined;
 }
 
-modify('artists@built-in', selector, async el => {
+modify(PLUGIN_ID, selector, async el => {
     const text = el.textContent || ''
     const [artist, album] = text.split(' · ')
     el.textContent = ''

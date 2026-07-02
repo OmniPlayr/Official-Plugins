@@ -1,19 +1,24 @@
 import { useParams } from "react-router-dom";
-import api from "../../modules/api";
-import { getAccount } from "../../modules/account";
-import { player, type QueueItem } from "../../modules/player";
 import translations from ".";
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Check, ChevronLeft, ChevronRight, Clock, Code2, Copy, Disc3, ListPlus, LoaderCircle, Pause, Play, Search, Share2, Shuffle, User, Volume2 } from "lucide-react";
 import { Tooltip } from "react-tooltip";
-import { useIsMobile } from "../../main";
-import { closePopup, createPopup } from "../../modules/PopupContext";
 import './styles/Playlist.css';
 import liked from './assets/liked.svg';
 import unknownArt from '../../assets/images/unknown-art.svg';
 import unknownAvatar from '../../assets/images/unknown-profile.svg';
-import { hasFrontendPlugin } from "../../modules/plugins";
-import { navigate } from "../../modules/navigate";
+
+import {
+    api,
+    getAccount,
+    player,
+    type QueueItem,
+    useIsMobile,
+    closePopup,
+    createPopup,
+    hasFrontendPlugin,
+    navigate,
+} from '@omniplayr/plugins';
 
 type UserAccount = {
     id: string | number;

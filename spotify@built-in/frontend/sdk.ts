@@ -1,5 +1,5 @@
 import { getValidToken } from './auth';
-import api from '../../modules/api';
+import { api } from '@omniplayr/plugins';
 
 declare global {
     interface Window {

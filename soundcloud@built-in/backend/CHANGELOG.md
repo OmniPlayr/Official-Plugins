@@ -2,6 +2,12 @@
 
 All notable changes to `soundcloud@built-in` are documented here. This changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses [Semantic Versioning](https://semver.org/).
 
+## [2.0.0] - 2026-07-02
+
+### Changed
+
+- Frontend: Switched imports to the new SDK.
+
 ## [1.0.4] - 2026-06-29
 
 ### Changed

@@ -1,13 +1,17 @@
 import './styles/Home.css';
 import translations from '.';
-import api from '../../modules/api';
-import { getAccount } from '../../modules/account';
 import { useEffect, useState } from 'react';
 import liked from './assets/liked.svg';
-import { navigate } from '../../modules/navigate';
 import unknownArt from '../../assets/images/unknown-art.svg';
-import { player, type QueueItem } from '../../modules/player';
 import { Pause, Play } from 'lucide-react';
+
+import {
+    api,
+    getAccount,
+    navigate,
+    player,
+    type QueueItem,
+} from '@omniplayr/plugins';
 
 type UserAccount = {
     id: string | number;

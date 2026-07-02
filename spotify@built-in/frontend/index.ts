@@ -1,12 +1,16 @@
 import { createElement } from 'react';
 import { getStatus, disconnect } from './auth';
 import { loadSdk } from './sdk';
-import { player } from '../../modules/player';
 import SpotifySourcePlugin from './SpotifySourcePlugin';
 import SpotifySetup from './SpotifySetup';
-import { registerPluginsMenuItem } from '../../modules/plugins';
-import { closePopup, createPopup } from '../../modules/PopupContext';
 import { LogIn, LogOut } from 'lucide-react';
+
+import {
+    player,
+    registerPluginsMenuItem,
+    createPopup,
+    closePopup,
+} from '@omniplayr/plugins';
 
 function mountSetupPopup() {
     const popupId = 'spotify-setup';

@@ -1,8 +1,12 @@
-import { modify, registerRoute } from "../../modules/plugins";
 import { createRoot, type Root } from "react-dom/client";
 import Home from "./Home";
 import Playlist from "./Playlist";
-import { definePluginTranslations } from "../../modules/pluginTranslation";
+
+import {
+    modify,
+    registerRoute,
+    definePluginTranslations,
+} from "@omniplayr/plugins";
 
 const plugin_key = "playlists@built-in";
 

@@ -1,11 +1,15 @@
 import { useParams } from 'react-router-dom';
-import api from '../../modules/api';
 import { albumCache } from './albumCache';
 import { useEffect, useState, useRef, Fragment } from 'react';
 import unknownArtwork from '../../assets/images/unknown-art.svg';
 import { ArrowBigLeft, Clock } from 'lucide-react';
-import { navigate } from '../../modules/navigate';
-import { Trans, useTranslation } from 'react-i18next';
+import translations from './translations';
+import TranslatedRichText from './TranslatedRichText';
+
+import {
+    navigate,
+    api
+} from '@omniplayr/plugins';
 
 async function getAlbum(artist: string, song?: string, album?: string, type?: string) {
     if (albumCache.has(album + "_" + artist)) {
@@ -64,7 +68,7 @@ function AlbumPage() {
     const [loading, setLoading] = useState(false);
     const [stickyVisible, setStickyVisible] = useState(false);
     const profileImageRef = useRef<HTMLImageElement>(null);
-    const { t } = useTranslation('artists@built-in');
+    const { t } = translations.useTranslation();
 
     const estimatedMs = (() => {
         if (album && artist && albumCache.has(album + "_" + artist)) return 0;
@@ -236,9 +240,8 @@ function AlbumPage() {
             </div>
             <div className="artist-page-request-info">
                 <p className="artist-page-request-info-text">
-                    <Trans
+                    <TranslatedRichText
                         i18nKey="request.album"
-                        ns="artists@built-in"
                         values={{
                             clientTime: data.client_time || 0,
                             serverTime: data.elapsed_ms || 0,
@@ -246,7 +249,6 @@ function AlbumPage() {
                             accuracyPercent: ((data.accuracy || 0) * 100).toFixed(2),
                             accuracy: data.accuracy || 0,
                         }}
-                        components={{ time: <strong />, cache: <strong />, accuracy: <strong /> }}
                     />
                 </p>
             </div>

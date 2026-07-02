@@ -4,6 +4,12 @@ All notable changes to `playlists@built-in` are documented here. This changelog 
 
 ## [Unreleased]
 
+## [beta-1.0.0] - 2026-07-02
+
+### Changed
+
+- Frontend: Switched imports to the new SDK.
+
 ## [beta-0.1.2] - 2026-06-29
 
 ### Added

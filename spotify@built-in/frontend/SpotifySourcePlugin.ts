@@ -1,5 +1,8 @@
-import type { SourcePlugin, TrackMetadata } from '../../modules/player';
-import { getVolumeStorage } from '../../modules/player';
+import {
+    getVolumeStorage,
+    type SourcePlugin,
+    type TrackMetadata
+} from '@omniplayr/plugins';
 import { sdkPlay, sdkPause, sdkResume, sdkSeek, sdkSetVolume, sdkActivateElement, onStateChange, getState, startVolumePolling, stopVolumePolling } from './sdk';
 import type { SpotifyState } from './sdk';
 

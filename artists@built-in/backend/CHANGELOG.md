@@ -4,6 +4,13 @@ All notable changes to `artists@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-07-02
+
+### Changed
+
+- Frontend: Switched imports to the new SDK.
+- Frontend: Switched text rendering to plugin translations.
+
 ## [1.2.0] - 2026-06-29
 
 ### Added

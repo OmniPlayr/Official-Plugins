@@ -1,4 +1,4 @@
-import api from '../../modules/api';
+import { api } from '@omniplayr/plugins';
 
 export async function getStatus(): Promise<{ token_set: boolean; is_admin: boolean }> {
     return await api('/plugin/artists/status') as { token_set: boolean; is_admin: boolean };

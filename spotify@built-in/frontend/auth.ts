@@ -1,4 +1,4 @@
-import api from '../../modules/api';
+import { api } from '@omniplayr/plugins';
 
 export async function getStatus(): Promise<{ connected: boolean; client_id_set: boolean; client_id?: string }> {
     return await api('/plugin/spotify/status') as { connected: boolean; client_id_set: boolean; client_id?: string };

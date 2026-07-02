@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Check, Copy } from 'lucide-react';
 import { getStatus, saveClientId, startAuth, consumeConnectedParam } from './auth';
-import { getConfig } from '../../modules/config';
+import { getConfig } from '../../modules/config'; // This import is not in the SDK so that is why it shows an error, but it works fine
 import './SpotifySetup.css';
 
 type Step = 'loading' | 'client-id' | 'connect' | 'success' | 'error';

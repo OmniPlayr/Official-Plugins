@@ -1,12 +1,13 @@
 import { useParams } from 'react-router-dom';
-import api from '../../modules/api';
+import {api} from '@omniplayr/plugins';
 import { artistCache } from './artistCache';
 import { useEffect, useState, useRef } from 'react';
 import jspt from "@wokki20/jspt";
 import unknownProfile from '../../assets/images/unknown-profile.svg';
 import unknownArtwork from '../../assets/images/unknown-art.svg';
 import { useNavigate } from 'react-router-dom';
-import { Trans, useTranslation } from 'react-i18next';
+import translations from './translations';
+import TranslatedRichText from './TranslatedRichText';
 
 async function getArtist(artist_name: string, song?: string, album?: string) {
     if (artistCache.has(artist_name)) {
@@ -78,7 +79,7 @@ const notFoundVariants = [
 ];
 
 function NotFound() {
-    const { t } = useTranslation('artists@built-in');
+    const { t } = translations.useTranslation();
     const pick = notFoundVariants[Math.floor(Math.random() * notFoundVariants.length)];
     return (
         <div className="artist-page not-found">
@@ -91,7 +92,7 @@ function NotFound() {
 }
 
 function MissingToken() {
-    const { t } = useTranslation('artists@built-in');
+    const { t } = translations.useTranslation();
     return (
         <div className="artist-page not-found">
             <h1 className="not-found-title">{t('missing_token.title')}</h1>
@@ -140,7 +141,7 @@ function ArtistPage() {
     const [stickyVisible, setStickyVisible] = useState(false);
     const profileImageRef = useRef<HTMLImageElement>(null);
     const navigate = useNavigate();
-    const { t } = useTranslation('artists@built-in');
+    const { t } = translations.useTranslation();
 
     const estimatedMs = (() => {
         if (artist && artistCache.has(artist)) return 0;
@@ -311,9 +312,8 @@ function ArtistPage() {
                 </div>
                 <div className="artist-page-request-info">
                     <p className="artist-page-request-info-text">
-                        <Trans
+                        <TranslatedRichText
                             i18nKey="request.artist"
-                            ns="artists@built-in"
                             values={{
                                 clientTime: data.client_time || 0,
                                 serverTime: data.elapsed_ms || 0,
@@ -321,7 +321,6 @@ function ArtistPage() {
                                 accuracyPercent: ((data.accuracy || 0) * 100).toFixed(2),
                                 accuracy: data.accuracy || 0,
                             }}
-                            components={{ time: <strong />, cache: <strong />, accuracy: <strong /> }}
                         />
                     </p>
                 </div>

@@ -13,6 +13,7 @@
     "token.popup.all_accounts": "Apply to all accounts",
     "token.popup.all_accounts.desc": "Admin only. This saves the token for every OmniPlayr account.",
     "token.popup.clear": "Remove token",
+    "token.popup.save": "Save",
     "token.popup.clearing": "Removing...",
     "token.popup.saving": "Saving...",
     "token.popup.error.required": "Paste a Genius token first.",

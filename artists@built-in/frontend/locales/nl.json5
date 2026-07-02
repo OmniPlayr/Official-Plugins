@@ -13,6 +13,7 @@
     "token.popup.all_accounts": "Toepassen op alle accounts",
     "token.popup.all_accounts.desc": "Alleen voor beheerders. Dit slaat de token op voor elk OmniPlayr-account.",
     "token.popup.clear": "Token verwijderen",
+    "token.popup.save": "Opslaan",
     "token.popup.clearing": "Verwijderen...",
     "token.popup.saving": "Opslaan...",
     "token.popup.error.required": "Plak eerst een Genius-token.",

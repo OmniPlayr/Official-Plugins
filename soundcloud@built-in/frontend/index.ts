@@ -1,11 +1,15 @@
 import { createElement } from 'react';
 import { LogIn, LogOut } from 'lucide-react';
-import { player } from '../../modules/player';
-import { registerPluginsMenuItem } from '../../modules/plugins';
-import { closePopup, createPopup } from '../../modules/PopupContext';
 import { disconnect, getStatus } from './auth';
 import SoundCloudSetup from './SoundCloudSetup';
 import SoundCloudSourcePlugin from './SoundCloudSourcePlugin';
+
+import {
+    player,
+    registerPluginsMenuItem,
+    closePopup,
+    createPopup
+} from '@omniplayr/plugins';
 
 function mountSetupPopup() {
     const popupId = 'soundcloud-setup';

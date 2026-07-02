@@ -2,13 +2,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { ExternalLink, LogIn, LoaderCircle, RadioTower, Settings2, Square } from 'lucide-react';
 import { makeToast } from '@wokki20/jspt';
-import { definePluginTranslations } from '../../modules/pluginTranslation';
-
-import api from '../../modules/api';
-import { navigate } from '../../modules/navigate';
-import { registerPluginsMenuItem, registerRoute } from '../../modules/plugins';
-import { closePopup, createPopup } from '../../modules/PopupContext';
 import './tunnels.css';
+
+import { 
+    api,
+    navigate, 
+    registerPluginsMenuItem, 
+    registerRoute,
+    closePopup, 
+    createPopup, 
+    definePluginTranslations 
+} from '@omniplayr/plugins';
 
 const PLUGIN_ID = 'tunnels@built-in';
 

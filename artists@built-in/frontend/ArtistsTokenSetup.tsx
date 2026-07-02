@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Check, Info, KeyRound, Trash2 } from 'lucide-react';
-import { closePopup } from '../../modules/PopupContext';
+import { closePopup } from '@omniplayr/plugins';
 import { disconnect, saveToken } from './auth';
+import translations from './translations';
 
 interface Props {
     tokenSet: boolean;
@@ -11,7 +11,7 @@ interface Props {
 }
 
 export default function ArtistsTokenSetup({ tokenSet, isAdmin, onDone }: Props) {
-    const { t } = useTranslation('artists@built-in');
+    const { t } = translations.useTranslation();
     const [token, setToken] = useState('');
     const [allAccounts, setAllAccounts] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -110,7 +110,7 @@ export default function ArtistsTokenSetup({ tokenSet, isAdmin, onDone }: Props) 
                 )}
                 <button className="artists-token-button artists-token-button--primary" onClick={handleSave} disabled={saving || clearing}>
                     <Check size={16} />
-                    {saving ? t('token.popup.saving') : t('common.save', { ns: 'translation' })}
+                    {saving ? t('token.popup.saving') : t('token.popup.save')}
                 </button>
             </div>
         </div>

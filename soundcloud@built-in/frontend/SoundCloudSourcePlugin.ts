@@ -1,7 +1,11 @@
-import type { SourcePlugin, TrackMetadata } from '../../modules/player';
-import { getVolumeStorage } from '../../modules/player';
 import { getTrack } from './auth';
 import { destroyWidget, getWidget } from './widget';
+
+import {
+    getVolumeStorage,
+    type SourcePlugin,
+    type TrackMetadata,
+} from '@omniplayr/plugins';
 
 const VOLUME_STORAGE_KEY = 'player_volume';
 const STATE_TIMEOUT_MS = 12000;

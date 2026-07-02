@@ -4,6 +4,12 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-07-02
+
+### Changed
+
+- Frontend: Switched imports to the new SDK.
+
 ## [1.1.7] - 2026-06-29
 
 ### Changed
