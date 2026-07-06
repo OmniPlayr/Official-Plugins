@@ -1,10 +1,9 @@
 from fastapi import Depends, HTTPException, Header
-from api.helpers.plugins import PluginBase, register, api
-from api.helpers.server import verify_auth, get_token_user
 from .paths import resolve_path, EXTENSION_CONTENT_TYPES, MUSIC_DIR
 from .metadata import get_content_type, get_file_size, get_metadata
 from .streaming import get_stream
 
+from omniplayr.plugins import PluginBase, register, api, verify_auth, get_token_user
 
 class Mp3Plugin(PluginBase):
     source_type = "mp3"

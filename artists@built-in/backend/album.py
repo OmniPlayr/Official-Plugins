@@ -2,7 +2,7 @@ import requests
 import time
 import json
 from pathlib import Path
-from api.helpers.plugin_config import get_plugin_config
+from omniplayr.plugins import get_plugin_config
 from .artist import (
     _get,
     _name_matches,

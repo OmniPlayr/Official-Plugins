@@ -1,12 +1,11 @@
 from fastapi import Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from api.helpers.admin import verify_admin
-from api.helpers.plugin_config import get_plugin_config
-from api.helpers.plugins import api
 from .proxy import start_proxy
 from .tunnels.ngrok import tunnels
 from .tunnels import cloudflare
+
+from omniplayr.plugins import verify_admin, get_plugin_config, api
 
 PLUGIN_KEY = "tunnels@built-in"
 

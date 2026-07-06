@@ -1,7 +1,6 @@
-from api.helpers.plugins import PluginBase, register
-from api.helpers.plugin_db import request_db_access
 from . import routes
 
+from omniplayr.plugins import PluginBase, register, request_db_access
 
 class SoundCloudPlugin(PluginBase):
     source_type = "soundcloud"

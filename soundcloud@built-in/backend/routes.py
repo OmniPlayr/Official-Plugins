@@ -6,13 +6,11 @@ from threading import RLock
 from urllib.parse import urlencode, urlparse, urlunparse
 
 import requests as http_requests
-from api.helpers.log import log
-from api.helpers.plugin_config import get_plugin_config
-from api.helpers.plugins import api, expose
-from api.helpers.server import get_token_user, verify_auth
 from fastapi import Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
+
+from omniplayr.plugins import log, get_plugin_config, api, expose, get_token_user, verify_auth
 
 PLUGIN_KEY = "soundcloud@built-in"
 

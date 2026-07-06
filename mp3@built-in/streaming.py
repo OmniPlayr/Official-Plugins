@@ -1,6 +1,7 @@
 from .paths import resolve_path
 from pathlib import Path
-from api.helpers.plugin_config import get_plugin_config
+
+from omniplayr.plugins import get_plugin_config
 
 PLUGIN_KEY = "mp3@built-in"
 

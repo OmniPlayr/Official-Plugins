@@ -2,7 +2,7 @@
     "id": "tunnels@built-in",
     "name": "tunnels",
     "author": "built-in",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "description": "Let your OmniPlayr server run through a secure tunnel",
     "type": "backend",
     "repository": "https://github.com/OmniPlayr/Official-Plugins",

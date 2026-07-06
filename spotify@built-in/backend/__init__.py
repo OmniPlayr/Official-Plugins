@@ -1,7 +1,6 @@
-from api.helpers.plugins import PluginBase, register
 from . import routes
-from api.helpers.plugin_db import request_db_access
 
+from omniplayr.plugins import request_db_access, PluginBase, register
 
 class SpotifyPlugin(PluginBase):
     source_type = "spotify"

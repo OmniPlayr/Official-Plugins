@@ -7,10 +7,9 @@ from threading import RLock
 from fastapi import Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-from api.helpers.plugins import api, expose
-from api.helpers.log import log
-from api.helpers.server import verify_auth, get_token_user
 from urllib.parse import urlparse
+
+from omniplayr.plugins import api, expose, log, verify_auth, get_token_user
 
 _db = None
 _pkce_store: dict[str, dict] = {}

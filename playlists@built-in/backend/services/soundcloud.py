@@ -1,7 +1,4 @@
-from api.helpers.account import get_account
-from api.helpers.log import log
-from api.helpers.plugins import call, has_function, is_installed
-
+from omniplayr.plugins import get_account, log, call, has_function, is_installed
 
 def convert_playlist(playlist: dict, user_id: int, local_owner=None, include_profile_images=False) -> dict:
     user = playlist.get("user") or {}

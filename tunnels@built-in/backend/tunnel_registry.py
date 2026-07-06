@@ -4,8 +4,7 @@ import json
 import threading
 from pathlib import Path
 
-from api.helpers.log import log
-
+from omniplayr.plugins import log
 
 class TunnelRegistry:
     def __init__(self, settings_path: Path):

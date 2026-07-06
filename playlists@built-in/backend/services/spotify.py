@@ -1,7 +1,4 @@
-from api.helpers.account import get_account
-from api.helpers.plugins import call, has_function, is_installed
-from api.helpers.log import log
-
+from omniplayr.plugins import get_account, call, has_function, is_installed, log
 
 def _first_image_url(images):
     if not isinstance(images, list):

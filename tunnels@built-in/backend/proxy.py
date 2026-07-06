@@ -3,7 +3,7 @@ import threading
 from urllib.parse import urlsplit
 from aiohttp import ClientSession, ClientTimeout, TCPConnector, WSMsgType, web
 
-from api.helpers.log import log
+from omniplayr.plugins import log
 
 _HOP_BY_HOP_HEADERS = {
     "connection",

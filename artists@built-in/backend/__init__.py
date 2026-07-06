@@ -1,12 +1,10 @@
 from fastapi import Depends, HTTPException, Query, Request
-from api.helpers.plugins import api
-from api.helpers.server import verify_auth, get_token_user
-from api.helpers.admin import get_admin_status
-from api.helpers.plugin_db import request_db_access
 from pydantic import BaseModel
 from .artist import get_artist_info, set_db as set_artist_db
 from .album import get_album_info
 from .exists import check_artist_exists
+
+from omniplayr.plugins import api, verify_auth, get_token_user, get_admin_status, request_db_access
 
 PLUGIN_KEY = "artists@built-in"
 _db = None

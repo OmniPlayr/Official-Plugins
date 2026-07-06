@@ -4,6 +4,10 @@ All notable changes to `tunnels@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-07-06
+
+- Backend: Switched imports to the new SDK.
+
 ## [2.0.0] - 2026-07-02
 
 ### Changed

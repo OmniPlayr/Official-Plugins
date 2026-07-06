@@ -6,9 +6,9 @@ from pathlib import Path
 import ngrok
 from dotenv import dotenv_values, load_dotenv
 
-from api.helpers.log import log
-from api.helpers.plugin_config import get_plugin_config
 from ..tunnel_registry import TunnelRegistry
+
+from omniplayr.plugins import log, get_plugin_config
 
 PLUGIN_KEY = "tunnels@built-in"
 PLUGIN_DIR = Path(__file__).resolve().parents[1]

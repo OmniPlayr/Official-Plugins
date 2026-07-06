@@ -3,16 +3,12 @@ import hashlib
 import time
 from pathlib import Path
 from threading import RLock, Thread
-
-from api.helpers.account import list_account_summaries, get_account, get_account_summary
-from api.helpers.plugin_config import get_plugin_config
-from api.helpers.plugins import api, get_plugin, has_function
-from api.helpers.server import verify_auth, get_token_user
 from fastapi import Depends, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from api.helpers.log import log
 from .services import soundcloud as soundcloud_service
 from .services import spotify as spotify_service
+
+from omniplayr.plugins import list_account_summaries, get_account, get_account_summary, get_plugin_config, api, get_plugin, has_function, verify_auth, get_token_user, log
 
 PLUGIN_KEY = "playlists@built-in"
 _db = None

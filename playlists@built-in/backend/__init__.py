@@ -1,6 +1,6 @@
-from api.helpers.plugin_db import request_db_access
 from . import playlists
-from api.helpers.log import log
+
+from omniplayr.plugins import log, request_db_access
 
 PLUGIN_KEY = "playlists@built-in"
 

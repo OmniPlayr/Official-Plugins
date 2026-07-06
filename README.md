@@ -24,7 +24,7 @@ Plugins are declared using a `package.json` manifest and may optionally ship wit
 ### [`mp3@built-in`](./mp3@built-in/)
 
 **Type:** Backend  
-**Version:** 1.2.1
+**Version:** 2.0.0
 
 Play your local audio files directly through OmniPlayr. Point the plugin at a folder on your server and it will index and stream everything inside it, no importing or transcoding needed.
 
@@ -37,7 +37,7 @@ Supports `.mp3`, `.flac`, `.wav`, `.ogg`, `.m4a`, `.aac`, and `.opus`. Reads ful
 ### [`spotify@built-in`](./spotify@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend 2.0.0 / Frontend 2.0.0
+**Version:** Backend 2.1.0 / Frontend 2.0.0
 
 Stream Spotify directly inside OmniPlayr. Connect your Spotify account once and OmniPlayr registers itself as a native Spotify playback device. Audio plays through the official Web Playback SDK, metadata is fetched via the Spotify Web API, and tokens are refreshed automatically in the background.
 
@@ -50,7 +50,7 @@ Requires a Spotify Premium account and a Spotify Developer App with a registered
 ### [`soundcloud@built-in`](./soundcloud@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend 2.0.0 / Frontend 2.0.0
+**Version:** Backend 2.1.0 / Frontend 2.0.0
 
 Play public SoundCloud URLs inside OmniPlayr through the SoundCloud HTML5 Widget API. Connect a SoundCloud account to fetch private playlists and account playlists through SoundCloud's OAuth API, with tokens refreshed automatically by the backend.
 
@@ -63,7 +63,7 @@ Public URL playback does not require Pro or app credentials. Connected account f
 ### [`playlists@built-in`](./playlists@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend beta-1.0.0 / Frontend beta-1.0.0
+**Version:** Backend beta-1.1.0 / Frontend beta-1.0.0
 
 Create, browse, and stream playlists inside OmniPlayr. The plugin manages local OmniPlayr playlists, automatically creates a private Liked Songs playlist for each user, and includes collaborator metadata for local playlists.
 
@@ -76,7 +76,7 @@ When `spotify@built-in` or `soundcloud@built-in` is installed and connected, ext
 ### [`artists@built-in`](./artists@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)
-**Version:** Backend 2.0.0 / Frontend 2.0.0
+**Version:** Backend 2.1.0 / Frontend 2.0.0
 
 Adds artist and album profile pages to OmniPlayr. Click on any artist or album name in the player and get a full profile: biography, genres, discography, tracklists, cover art, and more.
 
@@ -90,7 +90,7 @@ Data is pulled from [MusicBrainz](https://musicbrainz.org), [Genius](https://gen
 
 **Type:** Full-stack (Backend + Frontend)
 
-**Version:** Backend 2.0.0 / Frontend 2.0.0
+**Version:** Backend 2.1.0 / Frontend 2.0.0
 
 Give an OmniPlayr server a secure public HTTPS address and manage it from the admin UI. The plugin supports both [ngrok](https://ngrok.com) and [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/), including setup, start/stop controls, status and public URL reporting, and optional automatic startup.
 
