@@ -4,6 +4,13 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-07-06
+
+### Changed
+
+- Frontend: Spotify Web Playback SDK generic playback errors now run a device/playback diagnostic pass and report likely causes instead of logging only `Playback error`.
+- Frontend: Added transient volume support so pause fades can lower Spotify volume without overwriting the saved player volume.
+
 ## [2.1.0] - 2026-07-06
 
 - Backend: Switched imports to the new SDK.

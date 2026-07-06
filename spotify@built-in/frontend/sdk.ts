@@ -63,6 +63,10 @@ let readyResolve: (() => void) | null = null;
 let readyPromise = new Promise<void>(r => { readyResolve = r; });
 let volumeInterval: ReturnType<typeof setInterval> | null = null;
 let sdkLoadStarted = false;
+let lastPlaybackErrorMessage: string | null = null;
+let lastPlaybackErrorAt = 0;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let diagnosticsInFlight = false;
 
 function spotifyConsoleError(message: string, error?: unknown) {
     if (error) {
@@ -70,6 +74,163 @@ function spotifyConsoleError(message: string, error?: unknown) {
     } else {
         console.error(`[spotify@built-in] ${message}`);
     }
+}
+
+function spotifyConsoleWarn(message: string, error?: unknown) {
+    if (error) {
+        console.warn(`[spotify@built-in] ${message}`, error);
+    } else {
+        console.warn(`[spotify@built-in] ${message}`);
+    }
+}
+
+function describePlaybackError(message: string) {
+    if (message.toLowerCase() !== 'playback error') return message;
+
+    return 'Spotify reported a generic SDK playback error.';
+}
+
+function formatDevice(device: Record<string, unknown> | null | undefined) {
+    if (!device) return 'none';
+
+    const name = typeof device.name === 'string' ? device.name : 'unknown device';
+    const type = typeof device.type === 'string' ? device.type : 'unknown type';
+    const active = device.is_active === true ? 'active' : 'inactive';
+    const restricted = device.is_restricted === true ? ', restricted' : '';
+    const volume = typeof device.volume_percent === 'number' ? `, volume ${device.volume_percent}%` : '';
+
+    return `${name} (${type}, ${active}${restricted}${volume})`;
+}
+
+async function getSpotifyJson(path: string, token: string) {
+    const res = await fetch(`https://api.spotify.com/v1${path}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (res.status === 204) return null;
+
+    let body: unknown = null;
+    try {
+        body = await res.json();
+    } catch {
+        body = null;
+    }
+
+    return { ok: res.ok, status: res.status, body };
+}
+
+async function diagnosePlaybackError(message: string) {
+    if (diagnosticsInFlight) return;
+    diagnosticsInFlight = true;
+
+    try {
+        const token = await getValidToken();
+        const details: string[] = [];
+        const isGenericPlaybackError = message.toLowerCase() === 'playback error';
+        let sdkDevice: Record<string, unknown> | undefined;
+        let activeDevice: Record<string, unknown> | undefined;
+        let playbackState: {
+            is_playing?: boolean;
+            currently_playing_type?: string;
+            device?: Record<string, unknown>;
+        } | null = null;
+
+        details.push(describePlaybackError(message));
+        details.push(`SDK device id: ${deviceId ?? 'not ready'}`);
+        details.push(`Page visibility: ${document.visibilityState}`);
+
+        if (!token) {
+            details.push('Spotify token is unavailable or expired.');
+            spotifyConsoleWarn(`Spotify playback failed: ${details.join(' ')}`);
+            return;
+        }
+
+        const [devicesResult, playerResult] = await Promise.all([
+            getSpotifyJson('/me/player/devices', token),
+            getSpotifyJson('/me/player', token),
+        ]);
+
+        if (devicesResult && !devicesResult.ok) {
+            details.push(`Device lookup failed with Spotify API status ${devicesResult.status}.`);
+        } else if (devicesResult?.body && typeof devicesResult.body === 'object') {
+            const devices = Array.isArray((devicesResult.body as { devices?: unknown }).devices)
+                ? (devicesResult.body as { devices: Record<string, unknown>[] }).devices
+                : [];
+            sdkDevice = devices.find(device => device.id === deviceId);
+            activeDevice = devices.find(device => device.is_active === true);
+
+            details.push(`SDK device: ${formatDevice(sdkDevice)}.`);
+            details.push(`Active Spotify device: ${formatDevice(activeDevice)}.`);
+
+            if (!sdkDevice) {
+                details.push('The browser player is not listed as an available Spotify device.');
+            } else if (sdkDevice.is_restricted === true) {
+                details.push('Spotify marked the browser player as restricted.');
+            } else if (!activeDevice || activeDevice.id !== deviceId) {
+                details.push('Spotify is not currently playing through the browser SDK device.');
+            }
+        }
+
+        if (playerResult === null) {
+            details.push('Spotify reports no active playback session.');
+        } else if (playerResult && !playerResult.ok) {
+            details.push(`Playback-state lookup failed with Spotify API status ${playerResult.status}.`);
+        } else if (playerResult?.body && typeof playerResult.body === 'object') {
+            const body = playerResult.body as {
+                is_playing?: boolean;
+                currently_playing_type?: string;
+                device?: Record<string, unknown>;
+            };
+            playbackState = body;
+
+            details.push(`Spotify playback state: ${body.is_playing ? 'playing' : 'paused/stopped'} ${body.currently_playing_type ?? 'unknown item'}.`);
+            details.push(`Spotify playback device: ${formatDevice(body.device)}.`);
+        }
+
+        if (
+            isGenericPlaybackError &&
+            sdkDevice &&
+            activeDevice?.id === deviceId &&
+            playbackState?.is_playing === false
+        ) {
+            details.unshift(
+                'Likely cause: Chrome/Edge could not open or keep the selected Windows audio output device for Spotify Web Playback. ' +
+                'Spotify accepted the OmniPlayr browser device, then playback immediately stopped before audio started. ' +
+                'Check the Windows output device, Bluetooth/headset disconnects, exclusive-mode audio settings, sample-rate changes, or restart the browser audio service/browser.'
+            );
+        } else if (isGenericPlaybackError && !sdkDevice) {
+            details.unshift('Likely cause: the Spotify browser player disappeared from available devices before playback could start.');
+        } else if (isGenericPlaybackError && activeDevice?.id !== deviceId) {
+            details.unshift('Likely cause: Spotify moved playback to another device instead of the OmniPlayr browser player.');
+        }
+
+        spotifyConsoleWarn(`Spotify playback failed: ${details.join(' ')}`);
+    } catch (error) {
+        spotifyConsoleWarn(`Spotify playback failed: ${describePlaybackError(message)} Diagnostics failed.`, error);
+    } finally {
+        diagnosticsInFlight = false;
+    }
+}
+
+function scheduleReconnect() {
+    if (reconnectTimer || !sdkPlayer) return;
+
+    reconnectTimer = setTimeout(async () => {
+        reconnectTimer = null;
+        if (!sdkPlayer) return;
+
+        try {
+            deviceId = null;
+            resetReady();
+            const connected = await sdkPlayer.connect();
+
+            if (!connected) {
+                spotifyConsoleWarn('Spotify Web Playback SDK reconnect was rejected.');
+            }
+        } catch (error) {
+            spotifyConsoleWarn('Spotify Web Playback SDK reconnect failed.', error);
+        }
+    }, 1500);
 }
 
 async function loadAccount(): Promise<{ name?: string } | null> {
@@ -154,7 +315,18 @@ export async function loadSdk(): Promise<boolean> {
         });
 
         sdkPlayer.addListener('playback_error', ({ message }: { message: string }) => {
-            spotifyConsoleError(`Spotify SDK playback error: ${message}`);
+            const text = message || 'Playback error';
+            const now = Date.now();
+            const isDuplicate = text === lastPlaybackErrorMessage && now - lastPlaybackErrorAt < 30000;
+
+            lastPlaybackErrorMessage = text;
+            lastPlaybackErrorAt = now;
+
+            if (!isDuplicate) diagnosePlaybackError(text);
+
+            if (text.toLowerCase() === 'playback error') {
+                scheduleReconnect();
+            }
         });
 
         sdkPlayer.addListener('autoplay_failed', () => {

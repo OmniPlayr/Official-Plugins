@@ -56,6 +56,7 @@ export default class SpotifySourcePlugin implements SourcePlugin {
 
     private _isPlaying = false;
     private _volume = 1;
+    private transientVolumeActive = false;
 
     constructor() {
         const storage = getVolumeStorage();
@@ -125,6 +126,8 @@ export default class SpotifySourcePlugin implements SourcePlugin {
             callbacks.onReady();
 
             startVolumePolling(async (v: number) => {
+                if (this.transientVolumeActive) return;
+
                 this._volume = v;
                 const storage = getVolumeStorage();
                 storage?.setItem(VOLUME_STORAGE_KEY, String(v));
@@ -155,10 +158,17 @@ export default class SpotifySourcePlugin implements SourcePlugin {
     seek(seconds: number) { sdkSeek(seconds * 1000).catch(error => console.warn('[spotify@built-in] Failed to seek Spotify playback.', error)); }
 
     setVolume(fraction: number) {
+        this.transientVolumeActive = false;
         this._volume = fraction;
         sdkSetVolume(fraction);
         const storage = getVolumeStorage();
         storage?.setItem(VOLUME_STORAGE_KEY, String(fraction));
+    }
+
+    setTransientVolume(fraction: number) {
+        const clamped = Math.max(0, Math.min(1, fraction));
+        this.transientVolumeActive = Math.abs(clamped - this._volume) > 0.001;
+        sdkSetVolume(clamped);
     }
 
     getVolume() {
