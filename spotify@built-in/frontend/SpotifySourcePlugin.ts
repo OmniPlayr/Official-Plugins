@@ -149,7 +149,7 @@ export default class SpotifySourcePlugin implements SourcePlugin {
                 const storage = getVolumeStorage();
                 storage?.setItem(VOLUME_STORAGE_KEY, String(v));
                 callbacks.onStateChange();
-            }, window.sdkPlayer);
+            });
         });
 
         this.unsubscribe = onStateChange(state => {

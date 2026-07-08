@@ -48,8 +48,6 @@ export interface SpotifyPlayer {
     pause(): Promise<void>;
     resume(): Promise<void>;
     seek(ms: number): Promise<void>;
-    setVolume(fraction: number): Promise<void>;
-    getVolume(): Promise<number>;
     disconnect(): void;
 }
 
@@ -117,6 +115,31 @@ async function getSpotifyJson(path: string, token: string) {
     }
 
     return { ok: res.ok, status: res.status, body };
+}
+
+async function putSpotifyCommand(path: string, errorLabel: string, body?: unknown) {
+    const token = await getValidToken();
+    if (!token || !deviceId) throw new Error('Spotify not ready');
+
+    const res = await fetch(`https://api.spotify.com/v1${path}`, {
+        method: 'PUT',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+    });
+
+    if (!res.ok && res.status !== 204) {
+        let details = '';
+        try {
+            details = await res.text();
+        } catch {
+            details = '';
+        }
+
+        throw new Error(`${errorLabel}: ${res.status}${details ? ` ${details}` : ''}`);
+    }
 }
 
 async function diagnosePlaybackError(message: string) {
@@ -404,30 +427,59 @@ export async function sdkPlay(trackId: string) {
     }
 }
 
-export async function sdkPause() { await sdkPlayer?.pause(); }
+export async function sdkPause() {
+    await putSpotifyCommand(`/me/player/pause?device_id=${encodeURIComponent(deviceId ?? '')}`, 'Spotify pause failed');
+}
 
 export async function sdkResume() {
     await sdkPlayer?.activateElement();
-    await sdkPlayer?.resume();
+    await putSpotifyCommand(`/me/player/play?device_id=${encodeURIComponent(deviceId ?? '')}`, 'Spotify resume failed');
 }
 
-export async function sdkSeek(ms: number) { await sdkPlayer?.seek(ms); }
-export async function sdkSetVolume(fraction: number) { await sdkPlayer?.setVolume(fraction); }
+export async function sdkSeek(ms: number) {
+    const position = Math.max(0, Math.round(ms));
+    await putSpotifyCommand(`/me/player/seek?position_ms=${position}&device_id=${encodeURIComponent(deviceId ?? '')}`, 'Spotify seek failed');
+}
 export function sdkActivateElement() { return sdkPlayer?.activateElement(); }
 
-export function startVolumePolling(onChange: (v: number) => void | Promise<void>, sdkPlayer: SpotifyPlayer | null | undefined) {
-    if (volumeInterval || !sdkPlayer) return;
+export async function sdkSetVolume(fraction: number) {
+    const volumePercent = Math.max(0, Math.min(100, Math.round(fraction * 100)));
+    await putSpotifyCommand(`/me/player/volume?volume_percent=${volumePercent}&device_id=${encodeURIComponent(deviceId ?? '')}`, 'Spotify volume update failed');
+}
+
+async function sdkGetVolume(): Promise<number | null> {
+    const token = await getValidToken();
+    if (!token || !deviceId) return null;
+
+    const devicesResult = await getSpotifyJson('/me/player/devices', token);
+    if (!devicesResult?.ok || !devicesResult.body || typeof devicesResult.body !== 'object') return null;
+
+    const devices = Array.isArray((devicesResult.body as { devices?: unknown }).devices)
+        ? (devicesResult.body as { devices: Record<string, unknown>[] }).devices
+        : [];
+    const sdkDevice = devices.find(device => device.id === deviceId);
+    const volumePercent = sdkDevice?.volume_percent;
+
+    return typeof volumePercent === 'number'
+        ? Math.max(0, Math.min(1, volumePercent / 100))
+        : null;
+}
+
+export function startVolumePolling(onChange: (v: number) => void | Promise<void>) {
+    if (volumeInterval) return;
 
     let last = -1;
 
     volumeInterval = setInterval(async () => {
-        let v: number;
+        let v: number | null;
         try {
-            v = await sdkPlayer.getVolume();
+            v = await sdkGetVolume();
         } catch (error) {
             spotifyConsoleWarn('Spotify volume polling failed.', error);
             return;
         }
+
+        if (v === null) return;
 
         if (v !== last) {
             last = v;
