@@ -66,6 +66,7 @@ let lastPlaybackErrorAt = 0;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let diagnosticsInFlight = false;
 let reconnectAttempts = 0;
+let reconnectPromise: Promise<void> | null = null;
 
 function spotifyConsoleError(message: string, error?: unknown) {
     if (error) {
@@ -118,25 +119,60 @@ async function getSpotifyJson(path: string, token: string) {
     return { ok: res.ok, status: res.status, body };
 }
 
-async function putSpotifyCommand(path: string, errorLabel: string, body?: unknown) {
-    const token = await getValidToken();
-    if (!token || !deviceId) throw new Error('Spotify not ready');
+type SpotifyCommandPath = string | ((currentDeviceId: string) => string);
+type SpotifyCommandBody = unknown | ((currentDeviceId: string) => unknown);
 
-    const res = await fetch(`https://api.spotify.com/v1${path}`, {
-        method: 'PUT',
-        headers: {
-            Authorization: `Bearer ${token}`,
-            ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-        },
-        body: body === undefined ? undefined : JSON.stringify(body),
-    });
+function resolveCommandValue<T>(value: T | ((currentDeviceId: string) => T), currentDeviceId: string): T {
+    return typeof value === 'function'
+        ? (value as (currentDeviceId: string) => T)(currentDeviceId)
+        : value;
+}
 
-    if (!res.ok && res.status !== 204) {
+function isDeviceNotFound(status: number, details: string) {
+    return status === 404 && /device not found/i.test(details);
+}
+
+async function putSpotifyCommand(path: SpotifyCommandPath, errorLabel: string, body?: SpotifyCommandBody) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+        await waitReady();
+
+        const token = await getValidToken();
+        const targetDeviceId = deviceId;
+
+        if (!token || !targetDeviceId) {
+            if (attempt === 0) {
+                await reconnectNow();
+                continue;
+            }
+
+            throw new Error('Spotify not ready');
+        }
+
+        const resolvedPath = resolveCommandValue(path, targetDeviceId);
+        const resolvedBody = body === undefined ? undefined : resolveCommandValue(body, targetDeviceId);
+
+        const res = await fetch(`https://api.spotify.com/v1${resolvedPath}`, {
+            method: 'PUT',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                ...(resolvedBody === undefined ? {} : { 'Content-Type': 'application/json' }),
+            },
+            body: resolvedBody === undefined ? undefined : JSON.stringify(resolvedBody),
+        });
+
+        if (res.ok || res.status === 204) return;
+
         let details = '';
         try {
             details = await res.text();
         } catch {
             details = '';
+        }
+
+        if (attempt === 0 && isDeviceNotFound(res.status, details)) {
+            spotifyConsoleWarn('Spotify browser device disappeared; reconnecting the Web Playback SDK and retrying the command.');
+            await reconnectNow();
+            continue;
         }
 
         throw new Error(`${errorLabel}: ${res.status}${details ? ` ${details}` : ''}`);
@@ -316,6 +352,26 @@ async function createAndConnectPlayer(name?: string) {
     if (!connected) throw new Error('Spotify Web Playback SDK connection was rejected');
 }
 
+async function reconnectNow() {
+    if (reconnectPromise) return reconnectPromise;
+
+    if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+    }
+
+    reconnectPromise = (async () => {
+        reconnectAttempts += 1;
+        const account = await loadAccount();
+        await createAndConnectPlayer(account?.name);
+        await waitReady();
+    })().finally(() => {
+        reconnectPromise = null;
+    });
+
+    return reconnectPromise;
+}
+
 function scheduleReconnect() {
     if (reconnectTimer || !window.Spotify?.Player) return;
 
@@ -323,9 +379,7 @@ function scheduleReconnect() {
         reconnectTimer = null;
 
         try {
-            reconnectAttempts += 1;
-            const account = await loadAccount();
-            await createAndConnectPlayer(account?.name);
+            await reconnectNow();
         } catch (error) {
             spotifyConsoleWarn('Spotify Web Playback SDK reconnect failed.', error);
             if (reconnectAttempts < 3) scheduleReconnect();
@@ -411,64 +465,45 @@ export async function loadSdk(): Promise<boolean> {
 export function isSdkLoadStarted() { return sdkLoadStarted; }
 
 export async function sdkPlay(trackId: string) {
-    await waitReady();
-    const token = await getValidToken();
-    if (!token || !deviceId || !sdkPlayer) throw new Error('Spotify not ready');
-
-    const transferRes = await fetch('https://api.spotify.com/v1/me/player', {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device_ids: [deviceId], play: false }),
-    });
-
-    if (!transferRes.ok && transferRes.status !== 204) {
-        let details = '';
-        try {
-            details = await transferRes.text();
-        } catch {
-            details = '';
-        }
-
-        throw new Error(`Spotify device transfer failed: ${transferRes.status}${details ? ` ${details}` : ''}`);
-    }
-
-    const res = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uris: [`spotify:track:${trackId}`] }),
-    });
-
-    if (!res.ok && res.status !== 204) {
-        let details = '';
-        try {
-            details = await res.text();
-        } catch {
-            details = '';
-        }
-
-        throw new Error(`Spotify play failed: ${res.status}${details ? ` ${details}` : ''}`);
-    }
+    await putSpotifyCommand('/me/player', 'Spotify device transfer failed', currentDeviceId => ({
+        device_ids: [currentDeviceId],
+        play: false,
+    }));
+    await putSpotifyCommand(
+        currentDeviceId => `/me/player/play?device_id=${encodeURIComponent(currentDeviceId)}`,
+        'Spotify play failed',
+        { uris: [`spotify:track:${trackId}`] }
+    );
 }
 
 export async function sdkPause() {
-    await waitReady();
-    await putSpotifyCommand(`/me/player/pause?device_id=${encodeURIComponent(deviceId ?? '')}`, 'Spotify pause failed');
+    await putSpotifyCommand(
+        currentDeviceId => `/me/player/pause?device_id=${encodeURIComponent(currentDeviceId)}`,
+        'Spotify pause failed'
+    );
 }
 
 export async function sdkResume() {
-    await waitReady();
-    await putSpotifyCommand(`/me/player/play?device_id=${encodeURIComponent(deviceId ?? '')}`, 'Spotify resume failed');
+    await putSpotifyCommand(
+        currentDeviceId => `/me/player/play?device_id=${encodeURIComponent(currentDeviceId)}`,
+        'Spotify resume failed'
+    );
 }
 
 export async function sdkSeek(ms: number) {
-    await waitReady();
-    await putSpotifyCommand(`/me/player/seek?position_ms=${Math.max(0, Math.floor(ms))}&device_id=${encodeURIComponent(deviceId ?? '')}`, 'Spotify seek failed');
+    await putSpotifyCommand(
+        currentDeviceId => `/me/player/seek?position_ms=${Math.max(0, Math.floor(ms))}&device_id=${encodeURIComponent(currentDeviceId)}`,
+        'Spotify seek failed'
+    );
 }
 export function sdkActivateElement() { return sdkPlayer?.activateElement(); }
 
 export async function sdkSetVolume(fraction: number) {
     const volumePercent = Math.max(0, Math.min(100, Math.round(fraction * 100)));
-    await putSpotifyCommand(`/me/player/volume?volume_percent=${volumePercent}&device_id=${encodeURIComponent(deviceId ?? '')}`, 'Spotify volume update failed');
+    await putSpotifyCommand(
+        currentDeviceId => `/me/player/volume?volume_percent=${volumePercent}&device_id=${encodeURIComponent(currentDeviceId)}`,
+        'Spotify volume update failed'
+    );
 }
 
 async function sdkGetVolume(): Promise<number | null> {

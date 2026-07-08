@@ -4,6 +4,13 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.1.9] - 2026-07-08
+
+### Fixed
+
+- Frontend: Reconnect and retry Spotify playback commands when the Web Playback SDK device disappears and Spotify returns `Device not found`.
+- Frontend: Prevent volume updates from sending empty Spotify device IDs while the SDK device is being recreated.
+
 ## [2.1.8] - 2026-07-08
 
 ### Changed
