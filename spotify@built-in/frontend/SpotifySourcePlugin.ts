@@ -3,7 +3,7 @@ import {
     type SourcePlugin,
     type TrackMetadata
 } from '@omniplayr/plugins';
-import { sdkPlay, sdkPause, sdkResume, sdkSeek, sdkSetVolume, sdkActivateElement, onStateChange, getState, startVolumePolling, stopVolumePolling } from './sdk';
+import { sdkPlay, sdkPause, sdkResume, sdkSeek, sdkSetVolume, sdkActivateElement, onStateChange, getState, waitReady as sdkWaitReady, startVolumePolling, stopVolumePolling } from './sdk';
 import type { SpotifyState } from './sdk';
 
 const VOLUME_STORAGE_KEY = 'player_volume';
@@ -95,9 +95,15 @@ export default class SpotifySourcePlugin implements SourcePlugin {
 
         try {
             await timeout(
-                sdkPlay(songId),
+                sdkWaitReady(),
                 SPOTIFY_STATE_TIMEOUT_MS,
                 'Timed out waiting for Spotify Web Playback SDK readiness'
+            );
+
+            await timeout(
+                sdkPlay(songId),
+                SPOTIFY_STATE_TIMEOUT_MS,
+                'Timed out asking Spotify to start playback'
             );
         } catch (error) {
             console.error('[spotify@built-in] Spotify is unavailable or failed to start playback.', error);

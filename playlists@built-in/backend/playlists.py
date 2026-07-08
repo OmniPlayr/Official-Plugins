@@ -126,7 +126,7 @@ def _write_cached_page(user_id: int, service: str, limit: int, offset: int, play
         _write_json(_cache_path(user_id, service, playlist_id), playlist, cache_enabled)
     _write_json(
         _page_path(user_id, service, limit, offset),
-        {"playlist_ids": playlist_ids, "playlists": playlists},
+        {"version": 2, "playlist_ids": playlist_ids},
         cache_enabled,
     )
 

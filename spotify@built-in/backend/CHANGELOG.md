@@ -4,6 +4,12 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.1.2] - 2026-07-08
+
+### Fixed
+
+- Frontend: Fixed a bug where the SDK would fail to play a song. 
+
 ## [2.1.1] - 2026-07-06
 
 ### Changed

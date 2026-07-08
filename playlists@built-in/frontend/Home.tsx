@@ -22,7 +22,7 @@ type Playlist = {
     id: string | number;
     service: string;
     name: string;
-    cover?: string;
+    cover?: string | null;
     is_liked_playlist: boolean;
     created_by: string | number | null;
     created_by_name: string;
@@ -51,26 +51,18 @@ type HomeCache = {
 };
 
 const homeCache = new Map<string, HomeCache>();
+const PERSISTENT_CACHE_PREFIX = 'omniplayr:playlist-home:';
+let prunedPersistentPlaylistCaches = false;
 
-function persistentCacheKey(accountToken: string) {
-    let hash = 2166136261;
-    for (let index = 0; index < accountToken.length; index += 1) {
-        hash ^= accountToken.charCodeAt(index);
-        hash = Math.imul(hash, 16777619);
-    }
-    return `omniplayr:playlist-home:${(hash >>> 0).toString(16)}`;
-}
-
-function persistCache(cache: HomeCache) {
-    const accountToken = getAccount();
-    if (!accountToken) return;
-    try {
-        localStorage.setItem(persistentCacheKey(accountToken), JSON.stringify({
-            account: cache.account,
-            playlists: cache.playlists ?? [],
-        }));
-    } catch {
-        // Persistent playlist cache is an optimization; playback still works without it.
+function prunePersistentPlaylistCaches() {
+    if (prunedPersistentPlaylistCaches) return;
+    prunedPersistentPlaylistCaches = true;
+    for (let index = 0; index < localStorage.length; index += 1) {
+        const key = localStorage.key(index);
+        if (key?.startsWith(PERSISTENT_CACHE_PREFIX)) {
+            localStorage.removeItem(key);
+            index -= 1;
+        }
     }
 }
 
@@ -80,12 +72,11 @@ function getCache() {
 
     if (!cache) {
         try {
-            const stored = key === 'no-account' ? null : localStorage.getItem(persistentCacheKey(key));
-            const parsed = stored ? JSON.parse(stored) as Pick<HomeCache, 'account' | 'playlists'> : null;
-            cache = parsed ?? {};
+            prunePersistentPlaylistCaches();
         } catch {
-            cache = {};
+            // The backend owns persistent playlist caching; startup cleanup is best effort.
         }
+        cache = {};
         cache.songs = new Map();
         cache.songRequests = new Map();
         homeCache.set(key, cache);
@@ -223,7 +214,6 @@ function getPlaylists(
                 const event = JSON.parse(line) as { type: string; playlist?: Playlist; user?: UserAccount };
                 if (event.type === 'start' && event.user) {
                     cache.account = event.user;
-                    persistCache(cache);
                     onUser(event.user);
                     return;
                 }
@@ -232,7 +222,6 @@ function getPlaylists(
                     allCachedPlaylists.set(playlistKey(event.playlist), event.playlist);
                     if (event.playlist.service === 'local') {
                         cache.playlists = Array.from(allCachedPlaylists.values());
-                        persistCache(cache);
                         onUpdate(
                             cache.playlists,
                             cache.playlists.filter((playlist) => playlist.service === 'spotify').length,
@@ -240,12 +229,10 @@ function getPlaylists(
                     }
                 } else if (event.type === 'page') {
                     cache.playlists = Array.from(allCachedPlaylists.values());
-                    persistCache(cache);
                     const revealed = cache.playlists.filter((playlist) => playlist.service === 'spotify').length;
                     onUpdate(cache.playlists, revealed);
                 } else if (event.type === 'done') {
                     cache.playlists = Array.from(allCachedPlaylists.values());
-                    persistCache(cache);
                     onUpdate(cache.playlists, cache.playlists.filter((playlist) => playlist.service === 'spotify').length);
                 }
             };
@@ -268,12 +255,10 @@ function getPlaylists(
                 allCachedPlaylists.set(playlistKey(playlist), playlist);
             });
             cache.playlists = Array.from(allCachedPlaylists.values());
-            persistCache(cache);
             onUpdate(cache.playlists);
         }
 
         cache.playlists = Array.from(allCachedPlaylists.values());
-        persistCache(cache);
         return cache.playlists;
     })()
         .finally(() => {

@@ -259,7 +259,10 @@ export function onStateChange(cb: StateListener): () => void {
 
 export function getState() { return currentState; }
 export function getDeviceId() { return deviceId; }
-export function waitReady() { return readyPromise; }
+export function waitReady() {
+    if (sdkPlayer && deviceId) return Promise.resolve();
+    return readyPromise;
+}
 
 export async function loadSdk(): Promise<boolean> {
     if (document.getElementById('spotify-sdk')) return true;

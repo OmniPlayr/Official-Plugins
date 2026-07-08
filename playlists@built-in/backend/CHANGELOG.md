@@ -4,6 +4,13 @@ All notable changes to `playlists@built-in` are documented here. This changelog 
 
 ## [Unreleased]
 
+## [beta-1.1.1] - 2026-07-08
+
+### Fixed
+
+- Frontend: Stopped persisting playlist home data in `localStorage` and pruned old browser playlist cache entries on startup.
+- Backend: Reduced playlist page cache duplication by storing page indexes as playlist IDs while keeping playlist summaries in backend JSON cache files.
+
 ## [beta-1.1.0] - 2026-07-06
 
 - Backend: Switched imports to the new SDK.
