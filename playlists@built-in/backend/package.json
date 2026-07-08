@@ -1,7 +1,7 @@
 {
     "name": "playlists",
     "author": "built-in",
-    "version": "beta-1.1.2",
+    "version": "beta-1.2.0",
     "description": "Create, edit and listen to playlists for your OmniPlayr server.",
     "type": "backend",
     "repository": "https://github.com/OmniPlayr/Official-Plugins",

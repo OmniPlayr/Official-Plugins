@@ -4,6 +4,16 @@ All notable changes to `playlists@built-in` are documented here. This changelog 
 
 ## [Unreleased]
 
+## [beta-1.2.0] - 2026-07-08
+
+### Added
+
+- Frontend: Page to view all playlists for a specific service / group. This way it does not show all plugins on the Home page and requires an extra click to see all available playlists to keep the Home page cleaner.
+
+### Changed
+
+- Frontend: Changed the max playlists on the Home page to be 10 by default, if there are more then 10 playlists, the "View all" button will be shown.
+
 ## [beta-1.1.2] - 2026-07-08
 
 ### Fixed

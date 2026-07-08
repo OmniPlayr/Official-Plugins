@@ -3,7 +3,7 @@ import translations from '.';
 import { useEffect, useState } from 'react';
 import liked from './assets/liked.svg';
 import unknownArt from '../../assets/images/unknown-art.svg';
-import { Pause, Play } from 'lucide-react';
+import { LoaderCircle, Pause, Play } from 'lucide-react';
 
 import {
     api,
@@ -13,12 +13,12 @@ import {
     type QueueItem,
 } from '@omniplayr/plugins';
 
-type UserAccount = {
+export type UserAccount = {
     id: string | number;
     name: string;
 };
 
-type Playlist = {
+export type Playlist = {
     id: string | number;
     service: string;
     name: string;
@@ -28,20 +28,20 @@ type Playlist = {
     created_by_name: string;
 };
 
-type PlaylistSongMetadata = {
+export type PlaylistSongMetadata = {
     title: string;
     artist: string;
     album: string;
 };
 
-type PlaylistSong = {
+export type PlaylistSong = {
     source_type: string;
     song_id: string;
     spotify_uri: string | null;
     metadata: PlaylistSongMetadata;
 };
 
-type HomeCache = {
+export type HomeCache = {
     account?: UserAccount;
     accountRequest?: Promise<UserAccount>;
     playlists?: Playlist[];
@@ -74,7 +74,7 @@ function getCache() {
         try {
             prunePersistentPlaylistCaches();
         } catch {
-            // The backend owns persistent playlist caching; startup cleanup is best effort.
+            
         }
         cache = {};
         cache.songs = new Map();
@@ -87,7 +87,7 @@ function getCache() {
     return cache;
 }
 
-function account(cache: HomeCache) {
+export function account(cache: HomeCache) {
     if (cache.account) return Promise.resolve(cache.account);
     if (cache.accountRequest) return cache.accountRequest;
 
@@ -103,19 +103,19 @@ function account(cache: HomeCache) {
     return cache.accountRequest;
 }
 
-function playlistKey(playlist: Playlist) {
+export function playlistKey(playlist: Playlist) {
     return `${playlist.service}:${playlist.id}`;
 }
 
-function playlistRouteId(playlist: Playlist) {
+export function playlistRouteId(playlist: Playlist) {
     return `${playlist.id}${playlist.service === 'local' ? '' : `:${playlist.service}`}`;
 }
 
-function playlistQueueName(playlist: Playlist) {
+export function playlistQueueName(playlist: Playlist) {
     return `playlist:${playlist.service}:${playlist.id}`;
 }
 
-function queueItem(song: PlaylistSong, playlist: Playlist): QueueItem {
+export function queueItem(song: PlaylistSong, playlist: Playlist): QueueItem {
     return {
         songId: song.song_id,
         sourceType: song.source_type,
@@ -130,7 +130,7 @@ function queueItem(song: PlaylistSong, playlist: Playlist): QueueItem {
     };
 }
 
-async function getPlaylistSongs(cache: HomeCache, playlist: Playlist, onUpdate?: (songs: PlaylistSong[]) => void) {
+export async function getPlaylistSongs(cache: HomeCache, playlist: Playlist, onUpdate?: (songs: PlaylistSong[]) => void) {
     const key = playlistKey(playlist);
     if (cache.songs?.has(key)) return cache.songs.get(key)!;
     if (cache.songRequests?.has(key)) return cache.songRequests.get(key)!;
@@ -193,7 +193,7 @@ async function getPlaylistSongs(cache: HomeCache, playlist: Playlist, onUpdate?:
 function getPlaylists(
     userId: string | number,
     cache: HomeCache,
-    onUpdate: (playlists: Playlist[], revealedSpotifyCount?: number) => void,
+    onUpdate: (playlists: Playlist[]) => void,
     onUser: (user: UserAccount) => void,
 ) {
     if (cache.playlistsRequest) return cache.playlistsRequest;
@@ -235,17 +235,15 @@ function getPlaylists(
                     if (event.playlist.service === 'local') {
                         cache.playlists = Array.from(allCachedPlaylists.values());
                         onUpdate(
-                            cache.playlists,
-                            cache.playlists.filter((playlist) => playlist.service === 'spotify').length,
+                            cache.playlists
                         );
                     }
                 } else if (event.type === 'page') {
                     cache.playlists = Array.from(allCachedPlaylists.values());
-                    const revealed = cache.playlists.filter((playlist) => playlist.service === 'spotify').length;
-                    onUpdate(cache.playlists, revealed);
+                    onUpdate(cache.playlists);
                 } else if (event.type === 'done') {
                     cache.playlists = Array.from(allCachedPlaylists.values());
-                    onUpdate(cache.playlists, cache.playlists.filter((playlist) => playlist.service === 'spotify').length);
+                    onUpdate(cache.playlists);
                 }
             };
 
@@ -291,17 +289,10 @@ function Home() {
         isPlaying: player.isPlaying,
     }));
     const [loadingPlaylistKey, setLoadingPlaylistKey] = useState<string | null>(null);
-    const [visibleSpotifyCount, setVisibleSpotifyCount] = useState(
-        () => cache.playlists?.filter((playlist) => playlist.service === 'spotify').length ?? 10,
-    );
 
     useEffect(() => {
-        const updatePlaylists = (nextPlaylists: Playlist[], revealedSpotifyCount?: number) => {
+        const updatePlaylists = (nextPlaylists: Playlist[]) => {
             setPlaylists(nextPlaylists);
-            setVisibleSpotifyCount(
-                revealedSpotifyCount
-                ?? nextPlaylists.filter((playlist) => playlist.service === 'spotify').length,
-            );
         };
         getPlaylists('me', cache, updatePlaylists, setUserAccount).then(updatePlaylists);
     }, [cache]);
@@ -313,7 +304,15 @@ function Home() {
         });
     }), []);
 
-    const spotifyPlaylists = (playlists?.filter(p => p.service === 'spotify') ?? []).slice(0, visibleSpotifyCount);
+    const spotifyPlaylistsAll = (playlists?.filter(p => p.service === 'spotify') ?? []);
+    const spotifyPlaylists = (playlists?.filter(p => p.service === 'spotify') ?? []).slice(0, 10);
+
+    const soundcloudPlaylists = (playlists?.filter(p => p.service === 'soundcloud') ?? []).slice(0, 10);
+    const soundcloudPlaylistsAll = (playlists?.filter(p => p.service === 'soundcloud') ?? []);
+
+    const localPlaylists = (playlists?.filter(p => p.service === 'local') ?? []).slice(0, 10);
+    const localPlaylistsAll = (playlists?.filter(p => p.service === 'local') ?? []);
+
     const activeUser = userAccount ?? { id: '', name: '' };
     const currentPlaylist = playlists?.find(playlist => playlistQueueName(playlist) === playerState.queueName) ?? null;
 
@@ -391,32 +390,77 @@ function Home() {
         <div className='playlists-home'>
             <h1 className='playlists-home-title'>{t('home.title')}</h1>
             <p className='playlists-home-description'>{t('home.description.' + descriptionId, { name: activeUser.name })}</p>
-            {currentPlaylist && (
-                <button
-                    className='playlists-home-now-playing'
-                    type='button'
-                    onClick={() => navigate(`/playlist/${playlistRouteId(currentPlaylist)}`)}
-                >
-                    <span className='playlists-home-now-playing-label'>Playing from</span>
-                    <span className='playlists-home-now-playing-name'>{currentPlaylist.name}</span>
-                </button>
-            )}
-            <div className='playlist-group'>
-                <h2 className='playlist-group-title'>{t('home.playlists.title.local')}</h2>
-                <div className='playlists-home-playlists'>
-                    {playlists
-                        ?.filter(playlist => playlist.service === 'local')
-                        .map(renderPlaylist)}
+            <div className='playlist-home-container'>
+                <div className='playlist-home-container-widgets-small'>
+                    {currentPlaylist && (
+                        <button
+                            className='playlists-home-now-playing'
+                            type='button'
+                            onClick={() => navigate(`/playlist/${playlistRouteId(currentPlaylist)}`)}
+                        >
+                            <span className='playlists-home-now-playing-label'>{t('home.playing-from')}</span>
+                            <span className='playlists-home-now-playing-name'>{currentPlaylist.name}</span>
+                        </button>
+                    )}
+                </div>
+                <div className='playlist-home-container-widgets-large'>
+                    <div className='playlist-group'>
+                        <div className='playlist-group-header'>
+                            <h2 className='playlist-group-title'>{t('home.playlists.title.local')}</h2>
+                            {localPlaylistsAll.length > 10 && (
+                                <button
+                                    className='playlist-group-show-all'
+                                    type='button'
+                                    onClick={() => navigate('/playlists/local')}
+                                >
+                                    {t('home.playlists.show-all')}
+                                </button>
+                            )}
+                        </div>
+                        <div className='playlists-home-playlists'>
+                            {localPlaylists.map(renderPlaylist)}
+                        </div>
+                    </div>
+                    {spotifyPlaylists.length > 0 && (
+                        <div className='playlist-group'>
+                            <div className='playlist-group-header'>
+                                <h2 className='playlist-group-title'>{t('home.playlists.title.spotify')}</h2>
+                                {spotifyPlaylistsAll.length > 10 && (
+                                    <button
+                                        className='playlist-group-show-all'
+                                        type='button'
+                                        onClick={() => navigate('/playlists/spotify')}
+                                    >
+                                        {t('home.playlists.show-all')}
+                                    </button>
+                                )}
+                            </div>
+                            <div className='playlists-home-playlists'>
+                                {spotifyPlaylists.map(renderPlaylist)}
+                            </div>
+                        </div>
+                    )}
+                    {soundcloudPlaylists.length > 0 && (
+                        <div className='playlist-group'>
+                            <div className='playlist-group-header'>
+                                <h2 className='playlist-group-title'>{t('home.playlists.title.soundcloud')}</h2>
+                                {soundcloudPlaylistsAll.length > 10 && (
+                                    <button
+                                        className='playlist-group-show-all'
+                                        type='button'
+                                        onClick={() => navigate('/playlists/soundcloud')}
+                                    >
+                                        {t('home.playlists.show-all')}
+                                    </button>
+                                )}
+                            </div>
+                            <div className='playlists-home-playlists'>
+                                {soundcloudPlaylists.map(renderPlaylist)}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
-            {spotifyPlaylists.length > 0 && (
-                <div className='playlist-group'>
-                    <h2 className='playlist-group-title'>{t('home.playlists.title.spotify')}</h2>
-                    <div className='playlists-home-playlists'>
-                        {spotifyPlaylists.map(renderPlaylist)}
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

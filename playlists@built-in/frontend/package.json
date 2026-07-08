@@ -2,7 +2,7 @@
     "id": "playlists@built-in",
     "name": "playlists",
     "author": "built-in",
-    "version": "beta-1.1.2",
+    "version": "beta-1.2.0",
     "description": "Create, edit and listen to playlists for your OmniPlayr server.",
     "type": "frontend",
     "min-dev-version": "2026.7.6"

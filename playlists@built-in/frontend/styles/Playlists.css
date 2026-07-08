@@ -1,0 +1,19 @@
+.playlists-all {
+    height: 100%;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.playlists-all-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--clr-text-a0);
+    margin-bottom: 10px;
+}
+
+.playlists-all-playlists {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(calc(150px + 20px + 2px), 1fr));
+    gap: 10px;
+}

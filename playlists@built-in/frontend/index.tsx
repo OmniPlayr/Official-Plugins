@@ -7,6 +7,7 @@ import {
     registerRoute,
     definePluginTranslations,
 } from "@omniplayr/plugins";
+import Playlists from "./Playlists";
 
 const plugin_key = "playlists@built-in";
 
@@ -28,16 +29,27 @@ modify(plugin_key, 'Dashboard.dashboard-home', el => {
     let root = roots.get(container);
 
     if (!root) {
-        root = createRoot(container);
-        roots.set(container, root);
+        try {
+            root = createRoot(container);
+            roots.set(container, root);
+        } catch (e) {
+            console.error('Failed to create root for plugin', plugin_key, e);
+        }
     }
-
-    root.render(<Home />);
+    
+    if (root) {
+        root.render(<Home />);
+    }
 });
 
 registerRoute({
     path: "/playlist/:id",
     component: Playlist,
+})
+
+registerRoute({
+    path: "/playlists/:service",
+    component: Playlists,
 })
 
 export default translations;

@@ -7,6 +7,8 @@
     "home.description.5": "Naar welke artiest luister jij vandaag, {{name}}?",
     "home.description.6": "Tijd voor wat muziek, {{name}}! Wat staat er op?",
 
+    "home.playing-from": "Wordt afgespeeld uit",
+
     "home.playlist.createdFor": "Gemaakt voor {{name}}",
     "home.playlist.createdBy": "Gemaakt door {{name}}",
 
@@ -21,6 +23,9 @@
 
     "home.playlists.title.local": "Mijn playlists",
     "home.playlists.title.spotify": "Spotify-playlists",
+    "home.playlists.title.soundcloud": "SoundCloud-playlists",
+
+    "home.playlists.show-all": "Toon alles",
 
     "playlists.playlist.songs.table.title": "Titel",
     "playlists.playlist.songs.table.artist": "Artiest",
