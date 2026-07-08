@@ -4,6 +4,18 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.1.8] - 2026-07-08
+
+### Changed
+
+- Frontend: Rebuilt Spotify Web Playback SDK reconnect handling so unavailable browser devices recover instead of leaving Spotify with no active playback.
+- Frontend: Send pause, resume, and seek through Spotify's Web API to avoid SDK internal resume errors after track transitions.
+- Backend: Added Spotify playback-state and playback-control OAuth scopes required by the Web API playback commands.
+
+### Fixed
+
+- Frontend: Detect Spotify auto-advancing away from the current track and report the track ending to OmniPlayr so the next queued track starts cleanly.
+
 ## [2.1.7] - 2026-07-08
 
 ### Changed

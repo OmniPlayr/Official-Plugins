@@ -59,6 +59,7 @@ export default class SpotifySourcePlugin implements SourcePlugin {
 
     private lastPosition = 0;
     private lastPositionAt = 0;
+    private lastDuration = 0;
     private currentTrackId: string | null = null;
     private endedReported = false;
 
@@ -103,6 +104,8 @@ export default class SpotifySourcePlugin implements SourcePlugin {
         this.stopTicker();
         this.currentTrackId = songId;
         this.endedReported = false;
+        this.lastPosition = 0;
+        this.lastDuration = 0;
 
         try {
             await timeout(
@@ -156,10 +159,28 @@ export default class SpotifySourcePlugin implements SourcePlugin {
             if (!state) return;
 
             const track = state.track_window?.current_track;
-            if (track?.id !== this.currentTrackId) return;
+            if (track?.id !== this.currentTrackId) {
+                const estimatedPosition = this._isPlaying
+                    ? this.lastPosition + (Date.now() - this.lastPositionAt)
+                    : this.lastPosition;
+                const previousTrackFinished = (
+                    this.currentTrackId !== null &&
+                    this.lastDuration > 0 &&
+                    estimatedPosition >= this.lastDuration - 1500
+                );
+
+                if (previousTrackFinished && !this.endedReported) {
+                    this.endedReported = true;
+                    this.stopTicker();
+                    callbacks.onEnded();
+                }
+
+                return;
+            }
 
             this.lastPosition = state.position;
             this.lastPositionAt = Date.now();
+            this.lastDuration = state.duration;
             this._isPlaying = !state.paused;
 
             if (!state.paused) {

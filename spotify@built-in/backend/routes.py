@@ -476,7 +476,7 @@ def auth_start(request: Request, auth=Depends(verify_auth)):
         "code_challenge_method=S256",
         f"code_challenge={challenge}",
         f"state={state}",
-        "scope=streaming%20user-read-email%20user-read-private%20playlist-read-private%20playlist-read-collaborative",
+        "scope=streaming%20user-read-email%20user-read-private%20user-read-playback-state%20user-modify-playback-state%20playlist-read-private%20playlist-read-collaborative",
     ])
 
     return {"url": f"https://accounts.spotify.com/authorize?{params}"}
