@@ -82,35 +82,42 @@ function getCurrentSong(): string | undefined {
 modify(PLUGIN_ID, selector, async el => {
     const text = el.textContent || ''
     const [artist, album] = text.split(' · ')
+    const artists = artist?.split(' & ').filter(Boolean) || []
     el.textContent = ''
-    if (artist && artist !== 'undefined') {
-        const artistSpan = document.createElement('span')
-        artistSpan.className = 'artist-name'
-        artistSpan.textContent = artist
-        let prefetched = false
-        artistSpan.addEventListener('mouseenter', () => {
-            if (prefetched) return
-            prefetched = true
-            const song = getCurrentSong()
-            const params = new URLSearchParams({
-                ...(song ? { song } : {}),
-                ...(album ? { album } : {}),
+    artists.forEach((artistName, index) => {
+        if (artistName && artistName !== 'undefined') {
+            if (index > 0) {
+                el.appendChild(document.createTextNode(' & '))
+            }
+
+            const artistSpan = document.createElement('span')
+            artistSpan.className = 'artist-name'
+            artistSpan.textContent = artistName
+            let prefetched = false
+            artistSpan.addEventListener('mouseenter', () => {
+                if (prefetched) return
+                prefetched = true
+                const song = getCurrentSong()
+                const params = new URLSearchParams({
+                    ...(song ? { song } : {}),
+                    ...(album ? { album } : {}),
+                })
+                const query = params.size ? `?${params}&no_cache=true` : ''
+                api(`/plugin/artist/${encodeURIComponent(artistName)}${query}`).then(res => {
+                    artistCache.set(artistName, res as any[])
+                }).catch(() => {})
             })
-            const query = params.size ? `?${params}&no_cache=true` : ''
-            api(`/plugin/artist/${encodeURIComponent(artist)}${query}`).then(res => {
-                artistCache.set(artist, res as any[])
-            }).catch(() => {})
-        })
-        artistSpan.addEventListener('click', () => {
-            const song = getCurrentSong()
-            sessionStorage.setItem('artist-nav-context', JSON.stringify({
-                song,
-                album: album || undefined,
-            }))
-            navigate(`/artist/${encodeURIComponent(artist)}`)
-        })
-        el.appendChild(artistSpan)
-    }
+            artistSpan.addEventListener('click', () => {
+                const song = getCurrentSong()
+                sessionStorage.setItem('artist-nav-context', JSON.stringify({
+                    song,
+                    album: album || undefined,
+                }))
+                navigate(`/artist/${encodeURIComponent(artistName)}`)
+            })
+            el.appendChild(artistSpan)
+        }
+    })
     if (album) {
         const separator = document.createTextNode(' · ')
         el.appendChild(separator)

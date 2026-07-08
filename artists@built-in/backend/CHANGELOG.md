@@ -4,6 +4,12 @@ All notable changes to `artists@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-07-08
+
+### Added
+
+- Frontend: Made it so when there are multiple artists for a song, and it detects an `&` in the artist name, it splits the artist name and displays them separately.
+
 ## [2.1.0] - 2026-07-06
 
 - Backend: Switched imports to the new SDK.

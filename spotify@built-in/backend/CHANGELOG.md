@@ -4,6 +4,12 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.1.7] - 2026-07-08
+
+### Changed
+
+- Backend: Changed the way how artists are split, instead of splitting them with a `,` it now splits them with a `&`.
+
 ## [2.1.6] - 2026-07-08
 
 ### Changed

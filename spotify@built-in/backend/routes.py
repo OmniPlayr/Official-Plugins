@@ -241,9 +241,9 @@ def _track_metadata(track: dict) -> dict:
     duration_ms = track.get("duration_ms")
     return {
         "title": track.get("name"),
-        "artist": ", ".join(a.get("name", "") for a in artists if a.get("name")) or None,
+        "artist": " & ".join(a.get("name", "") for a in artists if a.get("name")) or None,
         "album": album.get("name"),
-        "album_artist": ", ".join(
+        "album_artist": " & ".join(
             a.get("name", "") for a in (album.get("artists") or []) if a.get("name")
         ) or None,
         "year": release_date[:4] or None,
