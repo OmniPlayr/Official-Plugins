@@ -4,6 +4,12 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.1.4] - 2026-07-08
+
+### Changed
+
+- Frontend: Always transfer Spotify playback to the current OmniPlayr SDK device before starting a track, even when Spotify already appears to be using that device.
+
 ## [2.1.3] - 2026-07-08
 
 ### Fixed

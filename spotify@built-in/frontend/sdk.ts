@@ -369,6 +369,23 @@ export async function sdkPlay(trackId: string) {
 
     await sdkPlayer.activateElement();
 
+    const transferRes = await fetch('https://api.spotify.com/v1/me/player', {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_ids: [deviceId], play: false }),
+    });
+
+    if (!transferRes.ok && transferRes.status !== 204) {
+        let details = '';
+        try {
+            details = await transferRes.text();
+        } catch {
+            details = '';
+        }
+
+        throw new Error(`Spotify device transfer failed: ${transferRes.status}${details ? ` ${details}` : ''}`);
+    }
+
     const res = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
