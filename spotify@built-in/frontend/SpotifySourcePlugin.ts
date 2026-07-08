@@ -25,12 +25,6 @@ function waitForSpotifyTrackState(
     songId: string,
     onReadyState: (state: SpotifyState) => void
 ): Promise<void> {
-    const currentState = getState();
-    if (currentState?.track_window?.current_track?.id === songId) {
-        onReadyState(currentState);
-        return Promise.resolve();
-    }
-
     return new Promise<void>((resolve, reject) => {
         let unsub: (() => void) | null = null;
 
@@ -59,9 +53,6 @@ export default class SpotifySourcePlugin implements SourcePlugin {
 
     private lastPosition = 0;
     private lastPositionAt = 0;
-    private lastDuration = 0;
-    private currentTrackId: string | null = null;
-    private endedReported = false;
 
     private _isPlaying = false;
     private _volume = 1;
@@ -96,16 +87,11 @@ export default class SpotifySourcePlugin implements SourcePlugin {
         callbacks: {
             onMetadata: (meta: TrackMetadata) => void;
             onReady: () => void;
-            onEnded: () => void;
             onStateChange: () => void;
         }
     ) {
         this.unsubscribe?.();
         this.stopTicker();
-        this.currentTrackId = songId;
-        this.endedReported = false;
-        this.lastPosition = 0;
-        this.lastDuration = 0;
 
         try {
             await timeout(
@@ -152,35 +138,14 @@ export default class SpotifySourcePlugin implements SourcePlugin {
                 const storage = getVolumeStorage();
                 storage?.setItem(VOLUME_STORAGE_KEY, String(v));
                 callbacks.onStateChange();
-            });
+            }, window.sdkPlayer);
         });
 
         this.unsubscribe = onStateChange(state => {
             if (!state) return;
 
-            const track = state.track_window?.current_track;
-            if (track?.id !== this.currentTrackId) {
-                const estimatedPosition = this._isPlaying
-                    ? this.lastPosition + (Date.now() - this.lastPositionAt)
-                    : this.lastPosition;
-                const previousTrackFinished = (
-                    this.currentTrackId !== null &&
-                    this.lastDuration > 0 &&
-                    estimatedPosition >= this.lastDuration - 1500
-                );
-
-                if (previousTrackFinished && !this.endedReported) {
-                    this.endedReported = true;
-                    this.stopTicker();
-                    callbacks.onEnded();
-                }
-
-                return;
-            }
-
             this.lastPosition = state.position;
             this.lastPositionAt = Date.now();
-            this.lastDuration = state.duration;
             this._isPlaying = !state.paused;
 
             if (!state.paused) {
@@ -190,14 +155,6 @@ export default class SpotifySourcePlugin implements SourcePlugin {
             }
 
             callbacks.onStateChange();
-
-            const nearEnd = state.duration > 0 && state.position >= state.duration - 1000;
-            if (state.paused && nearEnd && !this.endedReported) {
-                this.endedReported = true;
-                callbacks.onEnded();
-            } else if (!nearEnd) {
-                this.endedReported = false;
-            }
         });
     }
 
@@ -209,7 +166,7 @@ export default class SpotifySourcePlugin implements SourcePlugin {
     setVolume(fraction: number) {
         this.transientVolumeActive = false;
         this._volume = fraction;
-        sdkSetVolume(fraction).catch(error => console.warn('[spotify@built-in] Failed to set Spotify volume.', error));
+        sdkSetVolume(fraction);
         const storage = getVolumeStorage();
         storage?.setItem(VOLUME_STORAGE_KEY, String(fraction));
     }
@@ -217,7 +174,7 @@ export default class SpotifySourcePlugin implements SourcePlugin {
     setTransientVolume(fraction: number) {
         const clamped = Math.max(0, Math.min(1, fraction));
         this.transientVolumeActive = Math.abs(clamped - this._volume) > 0.001;
-        sdkSetVolume(clamped).catch(error => console.warn('[spotify@built-in] Failed to set transient Spotify volume.', error));
+        sdkSetVolume(clamped);
     }
 
     getVolume() {
@@ -241,7 +198,6 @@ export default class SpotifySourcePlugin implements SourcePlugin {
         this.unsubscribe?.();
         this.stopTicker();
         stopVolumePolling();
-        this.currentTrackId = null;
-        sdkPause().catch(error => console.warn('[spotify@built-in] Failed to pause Spotify playback during cleanup.', error));
+        sdkPause();
     }
 }

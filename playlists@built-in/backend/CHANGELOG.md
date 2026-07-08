@@ -4,6 +4,13 @@ All notable changes to `playlists@built-in` are documented here. This changelog 
 
 ## [Unreleased]
 
+## [beta-1.1.2] - 2026-07-08
+
+### Fixed
+
+- Frontend: Start playlist-home playback as soon as the first streamed or cached song arrives instead of waiting for the entire external playlist stream.
+- Frontend: Use cached playlist stream songs on the home play button so Spotify playlists can start immediately from backend cache.
+
 ## [beta-1.1.1] - 2026-07-08
 
 ### Fixed

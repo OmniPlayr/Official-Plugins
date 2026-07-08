@@ -130,7 +130,7 @@ function queueItem(song: PlaylistSong, playlist: Playlist): QueueItem {
     };
 }
 
-async function getPlaylistSongs(cache: HomeCache, playlist: Playlist) {
+async function getPlaylistSongs(cache: HomeCache, playlist: Playlist, onUpdate?: (songs: PlaylistSong[]) => void) {
     const key = playlistKey(playlist);
     if (cache.songs?.has(key)) return cache.songs.get(key)!;
     if (cache.songRequests?.has(key)) return cache.songRequests.get(key)!;
@@ -146,6 +146,7 @@ async function getPlaylistSongs(cache: HomeCache, playlist: Playlist) {
         if (!response.body) throw new Error('Playlist stream has no response body');
 
         const songs: PlaylistSong[] = [];
+        const songIndexes = new Map<string, number>();
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
@@ -153,8 +154,19 @@ async function getPlaylistSongs(cache: HomeCache, playlist: Playlist) {
         const consumeLine = (line: string) => {
             if (!line.trim()) return;
             const event = JSON.parse(line) as { type: string; song?: PlaylistSong; cached?: boolean };
-            if (event.type !== 'song' || !event.song || event.cached === true) return;
-            songs.push(event.song);
+            if (event.type !== 'song' || !event.song) return;
+
+            const songKey = `${event.song.source_type}:${event.song.song_id}:${event.song.spotify_uri ?? ''}`;
+            const existingIndex = songIndexes.get(songKey);
+            if (existingIndex === undefined) {
+                songIndexes.set(songKey, songs.length);
+                songs.push(event.song);
+            } else {
+                songs[existingIndex] = event.song;
+            }
+
+            cache.songs?.set(key, [...songs]);
+            onUpdate?.([...songs]);
         };
 
         while (true) {
@@ -314,16 +326,27 @@ function Home() {
 
         setLoadingPlaylistKey(key);
         try {
-            const songs = await getPlaylistSongs(cache, playlist);
-            if (songs.length === 0) return;
+            let started = false;
+            let playback: Promise<void> | null = null;
 
-            const [firstSong, ...remainingSongs] = songs;
-            const firstItem = queueItem(firstSong, playlist);
+            const startFromSongs = (songs: PlaylistSong[]) => {
+                if (started || songs.length === 0) return;
+                started = true;
 
-            player.clearPriorityQueue();
-            player.clearNextQueue();
-            const playback = player.playSong(firstItem.songId, firstItem.sourceType, firstItem.extra, true);
-            player.setNextQueue(playlistQueueName(playlist), remainingSongs.map(song => queueItem(song, playlist)));
+                const [firstSong, ...remainingSongs] = songs;
+                const firstItem = queueItem(firstSong, playlist);
+
+                player.clearPriorityQueue();
+                player.clearNextQueue();
+                playback = player.playSong(firstItem.songId, firstItem.sourceType, firstItem.extra, true);
+                player.setNextQueue(playlistQueueName(playlist), remainingSongs.map(song => queueItem(song, playlist)));
+            };
+
+            const songs = await getPlaylistSongs(cache, playlist, startFromSongs);
+            if (!started) startFromSongs(songs);
+            if (started) {
+                player.setNextQueue(playlistQueueName(playlist), songs.slice(1).map(song => queueItem(song, playlist)));
+            }
             await playback;
         } finally {
             setLoadingPlaylistKey(current => current === key ? null : current);

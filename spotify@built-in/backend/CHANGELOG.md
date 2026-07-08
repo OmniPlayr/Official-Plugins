@@ -4,57 +4,7 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
-## [2.1.9] - 2026-07-08
-
-### Fixed
-
-- Frontend: Reconnect and retry Spotify playback commands when the Web Playback SDK device disappears and Spotify returns `Device not found`.
-- Frontend: Prevent volume updates from sending empty Spotify device IDs while the SDK device is being recreated.
-
-## [2.1.8] - 2026-07-08
-
-### Changed
-
-- Frontend: Rebuilt Spotify Web Playback SDK reconnect handling so unavailable browser devices recover instead of leaving Spotify with no active playback.
-- Frontend: Send pause, resume, and seek through Spotify's Web API to avoid SDK internal resume errors after track transitions.
-- Backend: Added Spotify playback-state and playback-control OAuth scopes required by the Web API playback commands.
-
-### Fixed
-
-- Frontend: Detect Spotify auto-advancing away from the current track and report the track ending to OmniPlayr so the next queued track starts cleanly.
-
-## [2.1.7] - 2026-07-08
-
-### Changed
-
-- Backend: Changed the way how artists are split, instead of splitting them with a `,` it now splits them with a `&`.
-
-## [2.1.6] - 2026-07-08
-
-### Changed
-
-- Frontend: Read and update Spotify volume through Spotify's Web API instead of the Web Playback SDK volume message bridge to avoid SDK-side volume command errors.
-
-## [2.1.5] - 2026-07-08
-
-### Changed
-
-- Frontend: Sent pause, resume, seek, and volume commands through Spotify's Web API instead of the Web Playback SDK message bridge.
-
-## [2.1.4] - 2026-07-08
-
-### Changed
-
-- Frontend: Always transfer Spotify playback to the current OmniPlayr SDK device before starting a track, even when Spotify already appears to be using that device.
-
-## [2.1.3] - 2026-07-08
-
-### Fixed
-
-- Frontend: Hardened Spotify playback state handling so stale SDK events, volume polling failures, and cleanup errors no longer escape as unhandled playback errors.
-- Frontend: Report Spotify track endings to OmniPlayr and ignore state updates for tracks that are no longer active.
-
-## [2.1.2] - 2026-07-08
+## [2.2.0] - 2026-07-08
 
 ### Fixed
 
