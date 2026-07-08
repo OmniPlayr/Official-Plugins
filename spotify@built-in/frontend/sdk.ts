@@ -117,17 +117,13 @@ async function getSpotifyJson(path: string, token: string) {
     return { ok: res.ok, status: res.status, body };
 }
 
-async function putSpotifyCommand(path: string, errorLabel: string, body?: unknown) {
+async function putSpotifyCommand(path: string, errorLabel: string) {
     const token = await getValidToken();
     if (!token || !deviceId) throw new Error('Spotify not ready');
 
     const res = await fetch(`https://api.spotify.com/v1${path}`, {
         method: 'PUT',
-        headers: {
-            Authorization: `Bearer ${token}`,
-            ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-        },
-        body: body === undefined ? undefined : JSON.stringify(body),
+        headers: { Authorization: `Bearer ${token}` },
     });
 
     if (!res.ok && res.status !== 204) {
@@ -427,19 +423,14 @@ export async function sdkPlay(trackId: string) {
     }
 }
 
-export async function sdkPause() {
-    await putSpotifyCommand(`/me/player/pause?device_id=${encodeURIComponent(deviceId ?? '')}`, 'Spotify pause failed');
-}
+export async function sdkPause() { await sdkPlayer?.pause(); }
 
 export async function sdkResume() {
     await sdkPlayer?.activateElement();
-    await putSpotifyCommand(`/me/player/play?device_id=${encodeURIComponent(deviceId ?? '')}`, 'Spotify resume failed');
+    await sdkPlayer?.resume();
 }
 
-export async function sdkSeek(ms: number) {
-    const position = Math.max(0, Math.round(ms));
-    await putSpotifyCommand(`/me/player/seek?position_ms=${position}&device_id=${encodeURIComponent(deviceId ?? '')}`, 'Spotify seek failed');
-}
+export async function sdkSeek(ms: number) { await sdkPlayer?.seek(ms); }
 export function sdkActivateElement() { return sdkPlayer?.activateElement(); }
 
 export async function sdkSetVolume(fraction: number) {

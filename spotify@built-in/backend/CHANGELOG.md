@@ -4,11 +4,17 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.1.6] - 2026-07-08
+
+### Changed
+
+- Frontend: Read and update Spotify volume through Spotify's Web API instead of the Web Playback SDK volume message bridge to avoid SDK-side volume command errors.
+
 ## [2.1.5] - 2026-07-08
 
 ### Changed
 
-- Frontend: Send pause, resume, seek, and volume commands through Spotify's Web API instead of the Web Playback SDK message bridge to avoid SDK-side audio renderer command errors.
+- Frontend: Sent pause, resume, seek, and volume commands through Spotify's Web API instead of the Web Playback SDK message bridge.
 
 ## [2.1.4] - 2026-07-08
 
