@@ -25,6 +25,12 @@ function waitForSpotifyTrackState(
     songId: string,
     onReadyState: (state: SpotifyState) => void
 ): Promise<void> {
+    const currentState = getState();
+    if (currentState?.track_window?.current_track?.id === songId) {
+        onReadyState(currentState);
+        return Promise.resolve();
+    }
+
     return new Promise<void>((resolve, reject) => {
         let unsub: (() => void) | null = null;
 
@@ -53,6 +59,8 @@ export default class SpotifySourcePlugin implements SourcePlugin {
 
     private lastPosition = 0;
     private lastPositionAt = 0;
+    private currentTrackId: string | null = null;
+    private endedReported = false;
 
     private _isPlaying = false;
     private _volume = 1;
@@ -87,11 +95,14 @@ export default class SpotifySourcePlugin implements SourcePlugin {
         callbacks: {
             onMetadata: (meta: TrackMetadata) => void;
             onReady: () => void;
+            onEnded: () => void;
             onStateChange: () => void;
         }
     ) {
         this.unsubscribe?.();
         this.stopTicker();
+        this.currentTrackId = songId;
+        this.endedReported = false;
 
         try {
             await timeout(
@@ -144,6 +155,9 @@ export default class SpotifySourcePlugin implements SourcePlugin {
         this.unsubscribe = onStateChange(state => {
             if (!state) return;
 
+            const track = state.track_window?.current_track;
+            if (track?.id !== this.currentTrackId) return;
+
             this.lastPosition = state.position;
             this.lastPositionAt = Date.now();
             this._isPlaying = !state.paused;
@@ -155,6 +169,14 @@ export default class SpotifySourcePlugin implements SourcePlugin {
             }
 
             callbacks.onStateChange();
+
+            const nearEnd = state.duration > 0 && state.position >= state.duration - 1000;
+            if (state.paused && nearEnd && !this.endedReported) {
+                this.endedReported = true;
+                callbacks.onEnded();
+            } else if (!nearEnd) {
+                this.endedReported = false;
+            }
         });
     }
 
@@ -166,7 +188,7 @@ export default class SpotifySourcePlugin implements SourcePlugin {
     setVolume(fraction: number) {
         this.transientVolumeActive = false;
         this._volume = fraction;
-        sdkSetVolume(fraction);
+        sdkSetVolume(fraction).catch(error => console.warn('[spotify@built-in] Failed to set Spotify volume.', error));
         const storage = getVolumeStorage();
         storage?.setItem(VOLUME_STORAGE_KEY, String(fraction));
     }
@@ -174,7 +196,7 @@ export default class SpotifySourcePlugin implements SourcePlugin {
     setTransientVolume(fraction: number) {
         const clamped = Math.max(0, Math.min(1, fraction));
         this.transientVolumeActive = Math.abs(clamped - this._volume) > 0.001;
-        sdkSetVolume(clamped);
+        sdkSetVolume(clamped).catch(error => console.warn('[spotify@built-in] Failed to set transient Spotify volume.', error));
     }
 
     getVolume() {
@@ -198,6 +220,7 @@ export default class SpotifySourcePlugin implements SourcePlugin {
         this.unsubscribe?.();
         this.stopTicker();
         stopVolumePolling();
-        sdkPause();
+        this.currentTrackId = null;
+        sdkPause().catch(error => console.warn('[spotify@built-in] Failed to pause Spotify playback during cleanup.', error));
     }
 }

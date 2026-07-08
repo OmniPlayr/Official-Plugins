@@ -4,6 +4,13 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.1.3] - 2026-07-08
+
+### Fixed
+
+- Frontend: Hardened Spotify playback state handling so stale SDK events, volume polling failures, and cleanup errors no longer escape as unhandled playback errors.
+- Frontend: Report Spotify track endings to OmniPlayr and ignore state updates for tracks that are no longer active.
+
 ## [2.1.2] - 2026-07-08
 
 ### Fixed

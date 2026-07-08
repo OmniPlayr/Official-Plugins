@@ -249,7 +249,13 @@ function resetReady() {
 
 function notifyState(state: SpotifyState | null) {
     currentState = state;
-    stateListeners.forEach(cb => cb(state));
+    stateListeners.forEach(cb => {
+        try {
+            cb(state);
+        } catch (error) {
+            spotifyConsoleWarn('Spotify playback state listener failed.', error);
+        }
+    });
 }
 
 export function onStateChange(cb: StateListener): () => void {
@@ -392,17 +398,29 @@ export async function sdkSeek(ms: number) { await sdkPlayer?.seek(ms); }
 export async function sdkSetVolume(fraction: number) { await sdkPlayer?.setVolume(fraction); }
 export function sdkActivateElement() { return sdkPlayer?.activateElement(); }
 
-export function startVolumePolling(onChange: (v: number) => void, sdkPlayer: SpotifyPlayer | null | undefined) {
+export function startVolumePolling(onChange: (v: number) => void | Promise<void>, sdkPlayer: SpotifyPlayer | null | undefined) {
     if (volumeInterval || !sdkPlayer) return;
 
     let last = -1;
 
     volumeInterval = setInterval(async () => {
-        const v = await sdkPlayer.getVolume();
+        let v: number;
+        try {
+            v = await sdkPlayer.getVolume();
+        } catch (error) {
+            spotifyConsoleWarn('Spotify volume polling failed.', error);
+            return;
+        }
 
         if (v !== last) {
             last = v;
-            onChange(v);
+            try {
+                Promise.resolve(onChange(v)).catch(error => {
+                    spotifyConsoleWarn('Spotify volume change listener failed.', error);
+                });
+            } catch (error) {
+                spotifyConsoleWarn('Spotify volume change listener failed.', error);
+            }
         }
     }, 1000);
 }
