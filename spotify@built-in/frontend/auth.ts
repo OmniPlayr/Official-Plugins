@@ -1,7 +1,7 @@
 import { api } from '@omniplayr/plugins';
 
-export async function getStatus(): Promise<{ connected: boolean; client_id_set: boolean; client_id?: string }> {
-    return await api('/plugin/spotify/status') as { connected: boolean; client_id_set: boolean; client_id?: string };
+export async function getStatus(): Promise<{ connected: boolean; client_id_set: boolean; client_id?: string; redirect_uri: string }> {
+    return await api('/plugin/spotify/status') as { connected: boolean; client_id_set: boolean; client_id?: string; redirect_uri: string };
 }
 
 export async function saveClientId(clientId: string): Promise<void> {

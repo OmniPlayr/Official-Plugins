@@ -4,6 +4,12 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-07-08
+
+### Changed
+
+- Frontend: Moved the Spotify setup popup and menu labels to plugin translations.
+
 ## [2.2.0] - 2026-07-08
 
 ### Fixed

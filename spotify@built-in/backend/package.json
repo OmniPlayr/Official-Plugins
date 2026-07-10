@@ -1,7 +1,7 @@
 {
   "name": "spotify",
   "author": "built-in",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Play your Spotify music with OmniPlayr by using this plugin.",
   "type": "backend",
   "repository": "https://github.com/OmniPlayr/Official-Plugins",

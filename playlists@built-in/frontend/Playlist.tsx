@@ -372,6 +372,10 @@ function getSongShareLink(song: PlaylistSong) {
         return spotifyId ? `https://open.spotify.com/track/${spotifyId}` : null;
     }
 
+    if (song.source_type === 'youtube') {
+        return `https://music.youtube.com/watch?v=${encodeURIComponent(song.song_id)}`;
+    }
+
     if (song.path?.startsWith('http://') || song.path?.startsWith('https://')) {
         return song.path;
     }
@@ -577,6 +581,7 @@ function PlaylistSongActionsPopup({
 function Playlist() {
     const { id } = useParams() as { id: string | number };
     const { t, i18n } = translations.useTranslation();
+    const resolvedLanguage = (i18n as { resolvedLanguage?: string }).resolvedLanguage;
     const [cache] = useState(getCache);
     const [, setUserAccount] = useState<UserAccount | null>(cache.account ?? null);
     const [playlist, setPlaylist] = useState<Playlist | null>(cache.playlists.get(String(id)) ?? null);
@@ -1050,7 +1055,7 @@ function Playlist() {
                                         </div>
                                     </td>
                                     <td className='playlist-songs-table-row-album'>{song.metadata.album}</td>
-                                    <td className='playlist-songs-table-row-date-added'>{formatDateAdded(song.added_at, i18n.resolvedLanguage)}</td>
+                                    <td className='playlist-songs-table-row-date-added'>{formatDateAdded(song.added_at, resolvedLanguage)}</td>
                                     <td className='playlist-songs-table-row-duration'>{formatDuration(song.metadata.duration)}</td>
                                 </tr>
                                 );

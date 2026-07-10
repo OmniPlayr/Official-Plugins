@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Check, Copy } from 'lucide-react';
 import { getStatus, saveClientId, startAuth, consumeConnectedParam } from './auth';
-import { getConfig } from '../../modules/config'; // This import is not in the SDK so that is why it shows an error, but it works fine
+import translations from './translations';
 import './SpotifySetup.css';
 
 type Step = 'loading' | 'client-id' | 'connect' | 'success' | 'error';
@@ -12,6 +12,7 @@ interface Props {
 }
 
 export default function SpotifySetup({ onDone }: Props) {
+    const { t } = translations.useTranslation();
     const [step, setStep] = useState<Step>('loading');
     const [clientId, setClientId] = useState('');
     const [savedClientId, setSavedClientId] = useState('');
@@ -19,21 +20,8 @@ export default function SpotifySetup({ onDone }: Props) {
     const [saving, setSaving] = useState(false);
     const [connecting, setConnecting] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [redirectUri, setRedirectUri] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
-
-    const apiUrl = getConfig('api.apiUrl');
-
-    if (typeof apiUrl !== 'string') {
-        throw new Error('api.apiUrl must be a string');
-    }
-
-    const isLocal = /localhost|127\.0\.0\.1/.test(apiUrl);
-
-    const baseUrl = isLocal
-        ? apiUrl.replace(/^https?:\/\//, 'http://')
-        : apiUrl.replace(/^http:\/\//, 'https://');
-
-    const redirectUri = baseUrl + '/api/plugin/spotify/callback';
 
     useEffect(() => {
         const justConnected = consumeConnectedParam();
@@ -46,6 +34,7 @@ export default function SpotifySetup({ onDone }: Props) {
 
         getStatus()
             .then(s => {
+                setRedirectUri(s.redirect_uri);
                 if (s.connected) {
                     onDone();
                 } else if (s.client_id_set) {
@@ -57,7 +46,7 @@ export default function SpotifySetup({ onDone }: Props) {
                 }
             })
             .catch(() => {
-                setErrorMsg('Could not reach the backend.');
+                setErrorMsg(t('setup.error.backend'));
                 setStep('error');
             });
     }, []);
@@ -80,7 +69,7 @@ export default function SpotifySetup({ onDone }: Props) {
             setSavedClientId(clientId.trim());
             setStep('connect');
         } catch {
-            setErrorMsg('Failed to save Client ID. Please try again.');
+            setErrorMsg(t('setup.error.save-client-id'));
             setStep('error');
         } finally {
             setSaving(false);
@@ -92,7 +81,7 @@ export default function SpotifySetup({ onDone }: Props) {
         try {
             await startAuth();
         } catch {
-            setErrorMsg('Could not start the Spotify login flow. Please try again.');
+            setErrorMsg(t('setup.error.start-auth'));
             setStep('error');
             setConnecting(false);
         }
@@ -137,11 +126,11 @@ export default function SpotifySetup({ onDone }: Props) {
                 <div className="sp-body">
                     {step === 'error' && (
                         <>
-                            <p className="sp-title">Something went wrong</p>
+                            <p className="sp-title">{t('setup.error.title')}</p>
                             <p className="sp-error-msg">{errorMsg}</p>
                             <div className="sp-footer">
-                                <button className="sp-btn sp-btn--ghost" onClick={close}>Close</button>
-                                <button className="sp-btn sp-btn--secondary" onClick={() => setStep('client-id')}>Start over</button>
+                                <button className="sp-btn sp-btn--ghost" onClick={close}>{t('setup.action.close')}</button>
+                                <button className="sp-btn sp-btn--secondary" onClick={() => setStep('client-id')}>{t('setup.action.start-over')}</button>
                             </div>
                         </>
                     )}
@@ -151,39 +140,39 @@ export default function SpotifySetup({ onDone }: Props) {
                             <div className="sp-success__icon">
                                 <Check size={22} strokeWidth={2.5} />
                             </div>
-                            <p className="sp-success__title">Spotify connected</p>
-                            <p className="sp-success__desc">You're all set. Spotify tracks will play directly in your browser.</p>
+                            <p className="sp-success__title">{t('setup.success.title')}</p>
+                            <p className="sp-success__desc">{t('setup.success.desc')}</p>
                         </div>
                     )}
 
                     {step === 'client-id' && (
                         <>
-                            <p className="sp-title">Connect Spotify</p>
-                            <p className="sp-desc">Spotify requires a free developer app to authorize playback. This takes about two minutes and only needs to be done once.</p>
+                            <p className="sp-title">{t('setup.client.title')}</p>
+                            <p className="sp-desc">{t('setup.client.desc')}</p>
 
                             <div className="sp-instructions">
                                 <div className="sp-step">
                                     <span className="sp-step__num">1</span>
-                                    <span>Go to <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noreferrer">developer.spotify.com/dashboard</a> and create a free app</span>
+                                    <span>{t('setup.client.step1.prefix')} <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noreferrer">developer.spotify.com/dashboard</a> {t('setup.client.step1.suffix')}</span>
                                 </div>
                                 <div className="sp-step">
                                     <span className="sp-step__num">2</span>
-                                    <span>Under <strong>Redirect URIs</strong>, add this exact URL:</span>
+                                    <span>{t('setup.client.step2.prefix')} <strong>Redirect URIs</strong>{t('setup.client.step2.suffix')}</span>
                                 </div>
                                 <div className="sp-uri-box">
                                     <code>{redirectUri}</code>
-                                    <button className={`sp-copy-btn${copied ? ' sp-copy-btn--copied' : ''}`} onClick={handleCopy} title="Copy">
+                                    <button className={`sp-copy-btn${copied ? ' sp-copy-btn--copied' : ''}`} onClick={handleCopy} title={t('setup.action.copy')}>
                                     {copied ? <Check className='copy-icon copied' />: <Copy className='copy-icon' />}
                                     </button>
                                 </div>
                                 <div className="sp-step">
                                     <span className="sp-step__num">3</span>
-                                    <span>Copy the <strong>Client ID</strong> from the app overview and paste it below</span>
+                                    <span>{t('setup.client.step3.prefix')} <strong>Client ID</strong> {t('setup.client.step3.suffix')}</span>
                                 </div>
                             </div>
 
                             <div className="sp-field">
-                                <label className="sp-label" htmlFor="sp-client-id-input">Client ID</label>
+                                <label className="sp-label" htmlFor="sp-client-id-input">{t('setup.client.label')}</label>
                                 <input
                                     id="sp-client-id-input"
                                     ref={inputRef}
@@ -192,16 +181,16 @@ export default function SpotifySetup({ onDone }: Props) {
                                     value={clientId}
                                     onChange={e => setClientId(e.target.value)}
                                     onKeyDown={handleKeyDown}
-                                    placeholder="Paste your Client ID here"
+                                    placeholder={t('setup.client.placeholder')}
                                     spellCheck={false}
                                     autoComplete="off"
                                 />
                             </div>
 
                             <div className="sp-footer">
-                                <button className="sp-btn sp-btn--ghost" onClick={close}>Cancel</button>
+                                <button className="sp-btn sp-btn--ghost" onClick={close}>{t('setup.action.cancel')}</button>
                                 <button className="sp-btn sp-btn--primary" onClick={handleSaveClientId} disabled={!clientId.trim() || saving}>
-                                    {saving ? 'Saving...' : 'Next'}
+                                    {saving ? t('setup.action.saving') : t('setup.action.next')}
                                 </button>
                             </div>
                         </>
@@ -209,21 +198,21 @@ export default function SpotifySetup({ onDone }: Props) {
 
                     {step === 'connect' && (
                         <>
-                            <p className="sp-title">Log in with Spotify</p>
-                            <p className="sp-desc">Client ID saved. Click below to authorize OmniPlayr with your Spotify account. You'll be redirected to Spotify and back.</p>
+                            <p className="sp-title">{t('setup.connect.title')}</p>
+                            <p className="sp-desc">{t('setup.connect.desc')}</p>
 
                             <div className="sp-uri-box">
                                 <code>{redirectUri}</code>
-                                <button className={`sp-copy-btn${copied ? ' sp-copy-btn--copied' : ''}`} onClick={handleCopy} title="Copy">
+                                <button className={`sp-copy-btn${copied ? ' sp-copy-btn--copied' : ''}`} onClick={handleCopy} title={t('setup.action.copy')}>
                                     {copied ? <Check className='copy-icon copied' />: <Copy className='copy-icon' />}
                                 </button>
                             </div>
-                            <p className="sp-desc" style={{ marginTop: '-0.25rem' }}>Make sure this redirect URI is saved in your Spotify app.</p>
+                            <p className="sp-desc" style={{ marginTop: '-0.25rem' }}>{t('setup.connect.redirect-note')}</p>
 
                             <div className="sp-footer">
-                                <button className="sp-btn sp-btn--ghost" onClick={() => setStep('client-id')}>Back</button>
+                                <button className="sp-btn sp-btn--ghost" onClick={() => setStep('client-id')}>{t('setup.action.back')}</button>
                                 <button className="sp-btn sp-btn--spotify" onClick={handleConnect} disabled={connecting}>
-                                    {connecting ? 'Redirecting...' : 'Log in with Spotify'}
+                                    {connecting ? t('setup.action.redirecting') : t('setup.action.login')}
                                 </button>
                             </div>
                         </>

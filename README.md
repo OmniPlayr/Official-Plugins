@@ -37,7 +37,7 @@ Supports `.mp3`, `.flac`, `.wav`, `.ogg`, `.m4a`, `.aac`, and `.opus`. Reads ful
 ### [`spotify@built-in`](./spotify@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend 2.1.2 / Frontend 2.0.2
+**Version:** Backend 2.2.1 / Frontend 2.2.1
 
 Stream Spotify directly inside OmniPlayr. Connect your Spotify account once and OmniPlayr registers itself as a native Spotify playback device. Audio plays through the official Web Playback SDK, metadata is fetched via the Spotify Web API, and tokens are refreshed automatically in the background.
 
@@ -50,7 +50,7 @@ Requires a Spotify Premium account and a Spotify Developer App with a registered
 ### [`soundcloud@built-in`](./soundcloud@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend 2.1.0 / Frontend 2.0.0
+**Version:** Backend 2.1.1 / Frontend 2.1.1
 
 Play public SoundCloud URLs inside OmniPlayr through the SoundCloud HTML5 Widget API. Connect a SoundCloud account to fetch private playlists and account playlists through SoundCloud's OAuth API, with tokens refreshed automatically by the backend.
 
@@ -60,14 +60,27 @@ Public URL playback does not require Pro or app credentials. Connected account f
 
 ---
 
+### [`youtube@built-in`](./youtube@built-in/)
+
+**Type:** Full-stack (Backend + Frontend)
+**Version:** Backend 1.0.0 / Frontend 1.0.0
+
+Stream YouTube Music tracks inside OmniPlayr and connect a Google account to surface YouTube Music playlists. Audio streams are resolved with `yt-dlp`, metadata and playlist data come from `ytmusicapi`, and setup uses Google's TV and limited-input device OAuth flow.
+
+Requires a Google Cloud OAuth client configured for TVs and limited-input devices, plus the OAuth Client ID and Client Secret.
+
+[Read more](./youtube@built-in/backend/README.md)
+
+---
+
 ### [`playlists@built-in`](./playlists@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend beta-1.1.1 / Frontend beta-1.0.1
+**Version:** Backend beta-1.3.1 / Frontend beta-1.3.1
 
 Create, browse, and stream playlists inside OmniPlayr. The plugin manages local OmniPlayr playlists, automatically creates a private Liked Songs playlist for each user, and includes collaborator metadata for local playlists.
 
-When `spotify@built-in` or `soundcloud@built-in` is installed and connected, external playlists can appear beside local playlists. Playlist collections and individual playlist songs can be streamed incrementally, with disk caching for external summaries, details, and song lists.
+When `spotify@built-in`, `soundcloud@built-in`, or `youtube@built-in` is installed and connected, external playlists can appear beside local playlists. Playlist collections and individual playlist songs can be streamed incrementally, with disk caching for external summaries, details, and song lists.
 
 [Read more →](./playlists@built-in/backend/README.md)
 

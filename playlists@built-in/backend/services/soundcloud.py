@@ -71,6 +71,18 @@ def get_playlists(limit: int = 10, offset: int = 0, user_id: int = None, local_o
         log("SoundCloud plugin does not have get_playlists function", "debug")
         return []
 
+    if has_function("soundcloud@built-in", "get_auth_status"):
+        status = call(
+            "soundcloud@built-in",
+            "get_auth_status",
+            user_id=user_id,
+            timeout_seconds=int(config("requests.timeout_seconds", 10)),
+        )
+        log(f"SoundCloud auth status for account {user_id}: {status}", "debug")
+        if isinstance(status, dict) and not status.get("connected"):
+            log("SoundCloud plugin is not connected", "debug")
+            return []
+
     soundcloud_playlists = call(
         "soundcloud@built-in",
         "get_playlists",

@@ -113,6 +113,21 @@ def get_access_token(account_id: int) -> str | None:
     return data["access_token"]
 
 
+def get_auth_status(user_id: int, timeout_seconds: int = 10) -> dict:
+    row = _get_row(user_id)
+    if not row:
+        return {"configured": False, "connected": False}
+    return {
+        "configured": bool(row.get("client_id") and row.get("client_secret")),
+        "connected": bool(row.get("refresh_token")),
+        "access_token_set": bool(row.get("access_token")),
+        "token_expiry": int(row.get("token_expiry") or 0),
+    }
+
+
+expose(PLUGIN_KEY, "get_auth_status", get_auth_status)
+
+
 def _request(account_id: int, path_or_url: str, params=None, timeout_seconds: int = 10):
     token = get_access_token(account_id)
     if not token:
@@ -236,6 +251,10 @@ def get_playlists(
     force_refresh: bool = False,
     timeout_seconds: int = 10,
 ) -> list[dict] | None:
+    if not get_auth_status(user_id).get("connected"):
+        log(f"SoundCloud playlist request skipped for account {user_id}: account is not connected", "debug")
+        return []
+
     cache_key = (user_id, limit, offset)
     if not force_refresh:
         with _playlist_cache_lock:
@@ -377,12 +396,14 @@ def setup_client(body: SetupRequest, request: Request, auth=Depends(verify_auth)
 def status(request: Request, auth=Depends(verify_auth)):
     account_id = get_token_user(_account_token(request))
     row = _get_row(account_id)
+    redirect_uri = _base_url(request) + "/api/plugin/soundcloud/callback"
     if not row:
-        return {"connected": False, "client_id_set": False}
+        return {"connected": False, "client_id_set": False, "redirect_uri": redirect_uri}
     return {
         "connected": bool(row.get("access_token") and row.get("refresh_token")),
         "client_id_set": True,
         "client_id": row["client_id"],
+        "redirect_uri": redirect_uri,
     }
 
 

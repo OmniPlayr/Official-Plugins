@@ -52,6 +52,8 @@ export type HomeCache = {
 
 const homeCache = new Map<string, HomeCache>();
 const PERSISTENT_CACHE_PREFIX = 'omniplayr:playlist-home:';
+const HOME_SERVICE_PLAYLIST_LIMIT = 11;
+const HOME_PLAYLIST_SERVICES = 'local,spotify,soundcloud,youtube';
 let prunedPersistentPlaylistCaches = false;
 
 function prunePersistentPlaylistCaches() {
@@ -205,10 +207,13 @@ function getPlaylists(
         );
         const cachedSpotifyOffset = Array.from(allCachedPlaylists.values())
             .filter((playlist) => playlist.service === 'spotify').length;
+        const cachedYoutubeOffset = Array.from(allCachedPlaylists.values())
+            .filter((playlist) => playlist.service === 'youtube').length;
 
         try {
+            const services = encodeURIComponent(HOME_PLAYLIST_SERVICES);
             const response = await api(
-                `/plugin/playlists/${userId}/stream?spotify_offset=${cachedSpotifyOffset}`,
+                `/plugin/playlists/${userId}/stream?services=${services}&limit=${HOME_SERVICE_PLAYLIST_LIMIT}&spotify_offset=${cachedSpotifyOffset}&youtube_offset=${cachedYoutubeOffset}`,
                 undefined,
                 undefined,
                 true,
@@ -309,6 +314,9 @@ function Home() {
 
     const soundcloudPlaylists = (playlists?.filter(p => p.service === 'soundcloud') ?? []).slice(0, 10);
     const soundcloudPlaylistsAll = (playlists?.filter(p => p.service === 'soundcloud') ?? []);
+
+    const youtubePlaylists = (playlists?.filter(p => p.service === 'youtube') ?? []).slice(0, 10);
+    const youtubePlaylistsAll = (playlists?.filter(p => p.service === 'youtube') ?? []);
 
     const localPlaylists = (playlists?.filter(p => p.service === 'local') ?? []).slice(0, 10);
     const localPlaylistsAll = (playlists?.filter(p => p.service === 'local') ?? []);
@@ -456,6 +464,25 @@ function Home() {
                             </div>
                             <div className='playlists-home-playlists'>
                                 {soundcloudPlaylists.map(renderPlaylist)}
+                            </div>
+                        </div>
+                    )}
+                    {youtubePlaylists.length > 0 && (
+                        <div className='playlist-group'>
+                            <div className='playlist-group-header'>
+                                <h2 className='playlist-group-title'>{t('home.playlists.title.youtube')}</h2>
+                                {youtubePlaylistsAll.length > 10 && (
+                                    <button
+                                        className='playlist-group-show-all'
+                                        type='button'
+                                        onClick={() => navigate('/playlists/youtube')}
+                                    >
+                                        {t('home.playlists.show-all')}
+                                    </button>
+                                )}
+                            </div>
+                            <div className='playlists-home-playlists'>
+                                {youtubePlaylists.map(renderPlaylist)}
                             </div>
                         </div>
                     )}

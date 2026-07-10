@@ -8,9 +8,10 @@ song_ttl_seconds = 300
 enabled = true
 
 [providers]
-default_services = "local,spotify,soundcloud"
+default_services = "local,spotify,soundcloud,youtube"
 check_spotify_playlists = true
 check_soundcloud_playlists = true
+check_youtube_playlists = true
 
 [spotify]
 load_all_playlists = true
@@ -25,6 +26,18 @@ song_request_delay_ms = 250
 max_song_pages = 100
 
 [soundcloud]
+load_all_playlists = true
+request_page_size = 50
+display_batch_size = 10
+display_batch_delay_ms = 50
+max_playlist_pages = 100
+song_page_size = 50
+song_display_batch_size = 20
+song_display_batch_delay_ms = 10
+song_request_delay_ms = 250
+max_song_pages = 100
+
+[youtube]
 load_all_playlists = true
 request_page_size = 50
 display_batch_size = 10

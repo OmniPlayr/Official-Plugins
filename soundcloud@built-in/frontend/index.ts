@@ -3,6 +3,7 @@ import { LogIn, LogOut } from 'lucide-react';
 import { disconnect, getStatus } from './auth';
 import SoundCloudSetup from './SoundCloudSetup';
 import SoundCloudSourcePlugin from './SoundCloudSourcePlugin';
+import translations from './translations';
 
 import {
     player,
@@ -16,7 +17,7 @@ function mountSetupPopup() {
     createPopup({
         id: popupId,
         title: 'SoundCloud',
-        subtitle: 'Connect your SoundCloud account',
+        subtitle: translations.t('setup.desc'),
         close_button: true,
         mobileFullscreen: true,
         group: 'soundcloud-setup',
@@ -31,7 +32,7 @@ export function init() {
         if (status.connected) {
             registerPluginsMenuItem('soundcloud@built-in', {
                 icon: LogOut,
-                label: 'Log Out',
+                label: translations.t('setup.button.logout'),
                 function: () => {
                     disconnect().then(() => location.reload());
                 },
@@ -39,7 +40,7 @@ export function init() {
         } else {
             registerPluginsMenuItem('soundcloud@built-in', {
                 icon: LogIn,
-                label: 'Connect Account',
+                label: translations.t('setup.button.connect'),
                 function: mountSetupPopup,
                 needsInteraction: true,
             });

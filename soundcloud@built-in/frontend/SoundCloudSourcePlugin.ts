@@ -1,4 +1,4 @@
-import { getTrack } from './auth';
+import { getTrack, getTrackMetadata } from './auth';
 import { destroyWidget, getWidget } from './widget';
 
 import {
@@ -14,7 +14,7 @@ function wait(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function normalizeMetadata(raw: Record<string, unknown>): TrackMetadata {
+function normalizeMetadata(raw: TrackMetadata): TrackMetadata {
     return {
         title: typeof raw.title === 'string' ? raw.title : null,
         artist: typeof raw.artist === 'string' ? raw.artist : null,
@@ -65,12 +65,13 @@ export default class SoundCloudSourcePlugin implements SourcePlugin {
         callbacks: {
             onMetadata: (meta: TrackMetadata) => void;
             onReady: () => void;
+            onEnded: () => void;
             onStateChange: () => void;
         }
     ) {
         this.currentTrackId = songId;
         this.stopTicker();
-        const [{ url, metadata }, widget] = await Promise.all([getTrack(songId), getWidget()]);
+        const [{ url }, metadata, widget] = await Promise.all([getTrack(songId), getTrackMetadata(songId), getWidget()]);
         const events = window.SC?.Widget.Events;
         if (!events) throw new Error('SoundCloud Widget API is unavailable');
 
@@ -81,6 +82,7 @@ export default class SoundCloudSourcePlugin implements SourcePlugin {
 
         let ready = false;
         const timeoutAt = Date.now() + STATE_TIMEOUT_MS;
+        const backendMetadata = normalizeMetadata(metadata);
 
         await new Promise<void>((resolve, reject) => {
             widget.load(url, {
@@ -88,7 +90,7 @@ export default class SoundCloudSourcePlugin implements SourcePlugin {
                 callback: () => {
                     widget.setVolume(Math.round(this._volume * 100));
                     widget.getDuration(duration => { this._duration = duration / 1000; });
-                    callbacks.onMetadata(normalizeMetadata(metadata));
+                    callbacks.onMetadata(backendMetadata);
                     callbacks.onReady();
                     ready = true;
                     resolve();
@@ -120,6 +122,7 @@ export default class SoundCloudSourcePlugin implements SourcePlugin {
         widget.bind(events.FINISH, () => {
             this._isPlaying = false;
             this.stopTicker();
+            callbacks.onEnded();
             callbacks.onStateChange();
         });
         widget.bind(events.PLAY_PROGRESS, payload => {
@@ -160,6 +163,11 @@ export default class SoundCloudSourcePlugin implements SourcePlugin {
         storage?.setItem(VOLUME_STORAGE_KEY, String(this._volume));
         const widget = await getWidget();
         widget.setVolume(Math.round(this._volume * 100));
+    }
+
+    async setTransientVolume(fraction: number) {
+        const widget = await getWidget();
+        widget.setVolume(Math.round(Math.max(0, Math.min(1, fraction)) * 100));
     }
 
     getVolume() {

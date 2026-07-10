@@ -1,7 +1,7 @@
-import {api} from '@omniplayr/plugins';
+import {api, type TrackMetadata} from '@omniplayr/plugins';
 
-export async function getStatus(): Promise<{ connected: boolean; client_id_set: boolean; client_id?: string }> {
-    return await api('/plugin/soundcloud/status') as { connected: boolean; client_id_set: boolean; client_id?: string };
+export async function getStatus(): Promise<{ connected: boolean; client_id_set: boolean; client_id?: string; redirect_uri: string }> {
+    return await api('/plugin/soundcloud/status') as { connected: boolean; client_id_set: boolean; client_id?: string; redirect_uri: string };
 }
 
 export async function saveCredentials(clientId: string, clientSecret: string): Promise<void> {
@@ -19,6 +19,13 @@ export async function getTrack(trackId: string): Promise<{ id: string; url: stri
         url: string;
         metadata: Record<string, unknown>;
     };
+}
+
+export async function getTrackMetadata(trackId: string): Promise<TrackMetadata> {
+    const encoded = encodeURIComponent(trackId);
+    const result = await api(`/player/media/soundcloud:${encoded}`) as { metadata: TrackMetadata };
+
+    return result.metadata;
 }
 
 export async function disconnect(): Promise<void> {

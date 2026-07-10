@@ -7,10 +7,13 @@ from fastapi import Depends, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from .services import soundcloud as soundcloud_service
 from .services import spotify as spotify_service
+from .services import youtube as youtube_service
 
 from omniplayr.plugins import list_account_summaries, get_account, get_account_summary, get_plugin_config, api, get_plugin, has_function, verify_auth, get_token_user, log
 
 PLUGIN_KEY = "playlists@built-in"
+SUPPORTED_SERVICES = {"local", "spotify", "soundcloud", "youtube"}
+DEFAULT_SERVICES = "local,spotify,soundcloud,youtube"
 _db = None
 _cache_lock = RLock()
 _refreshing = set()
@@ -235,14 +238,20 @@ def _resolve_options(limit, offset, services):
     if resolved_offset < 0:
         raise HTTPException(status_code=400, detail="offset must be at least 0")
 
-    configured_services = str(_config("providers.default_services", "local,spotify,soundcloud"))
+    configured_services = str(_config("providers.default_services", DEFAULT_SERVICES))
+    if services is None and "youtube" not in {
+        str(service).strip().lower()
+        for service in configured_services.split(",")
+        if str(service).strip()
+    }:
+        configured_services = f"{configured_services},youtube"
     requested = services.split(",") if services is not None else configured_services.split(",")
     requested_services = {
         "local" if str(service).strip().lower() == "omniplayr" else str(service).strip().lower()
         for service in requested
         if str(service).strip()
     }
-    invalid_services = requested_services - {"local", "spotify", "soundcloud"}
+    invalid_services = requested_services - SUPPORTED_SERVICES
     if not requested_services or invalid_services:
         invalid = ", ".join(sorted(invalid_services)) or "none"
         raise HTTPException(status_code=400, detail=f"Invalid playlist services: {invalid}")
@@ -250,6 +259,8 @@ def _resolve_options(limit, offset, services):
         requested_services.discard("spotify")
     if not bool(_config("providers.check_soundcloud_playlists", True)):
         requested_services.discard("soundcloud")
+    if not bool(_config("providers.check_youtube_playlists", True)):
+        requested_services.discard("youtube")
 
     return resolved_limit, resolved_offset, requested_services
 
@@ -323,6 +334,29 @@ def _get_soundcloud_page(user_id: int, limit: int, offset: int, local_owner, ref
     return _refresh_soundcloud_page(user_id, limit, offset, local_owner), False
 
 
+def _refresh_youtube_page(user_id: int, limit: int, offset: int, local_owner):
+    playlists = youtube_service.get_playlists(
+        user_id=user_id,
+        limit=limit,
+        offset=offset,
+        local_owner=local_owner,
+        config=_config,
+    )
+    if playlists is not None:
+        _write_cached_page(user_id, "youtube", limit, offset, playlists)
+    return playlists
+
+
+def _get_youtube_page(user_id: int, limit: int, offset: int, local_owner, refresh_cached=True):
+    cached = _read_cached_page(user_id, "youtube", limit, offset)
+    refresh_key = f"youtube-page-{user_id}-{offset}-{limit}"
+    if cached is not None:
+        if refresh_cached and bool(_config("cache.refresh_in_background", True)):
+            _start_refresh(refresh_key, _refresh_youtube_page, user_id, limit, offset, local_owner)
+        return cached, True
+    return _refresh_youtube_page(user_id, limit, offset, local_owner), False
+
+
 @api.get("/playlists/{user_id}")
 def get_playlists(
     user_id: int,
@@ -374,6 +408,13 @@ def get_playlists(
         if not include_private:
             soundcloud_playlists = [playlist for playlist in soundcloud_playlists if not playlist["private"]]
         response.extend(soundcloud_playlists)
+
+    if "youtube" in requested_services:
+        youtube_playlists, _ = _get_youtube_page(user_id, limit, offset, user)
+        youtube_playlists = youtube_playlists or []
+        if not include_private:
+            youtube_playlists = [playlist for playlist in youtube_playlists if not playlist["private"]]
+        response.extend(youtube_playlists)
     
     log(f"GET /playlists/{user_id}: returning response", "debug")
     
@@ -437,6 +478,7 @@ def stream_playlists(
     limit: int | None = Query(None),
     offset: int | None = Query(None),
     spotify_offset: int | None = Query(None),
+    youtube_offset: int | None = Query(None),
     services: str | None = Query(None),
     auth=Depends(verify_auth),
     x_account_token: str = Header(..., alias="X-Account-Token"),
@@ -464,8 +506,11 @@ def stream_playlists(
     limit, offset, requested_services = _resolve_options(limit, offset, services)
     resolved_spotify_offset = offset if spotify_offset is None else spotify_offset
     resolved_soundcloud_offset = offset
+    resolved_youtube_offset = offset if youtube_offset is None else youtube_offset
     if resolved_spotify_offset < 0:
         raise HTTPException(status_code=400, detail="spotify_offset must be at least 0")
+    if resolved_youtube_offset < 0:
+        raise HTTPException(status_code=400, detail="youtube_offset must be at least 0")
     include_private = token_user_id == resolved_user_id
 
     def generate():
@@ -476,6 +521,7 @@ def stream_playlists(
             offset=offset,
             spotify_offset=resolved_spotify_offset,
             soundcloud_offset=resolved_soundcloud_offset,
+            youtube_offset=resolved_youtube_offset,
             user={"id": user["id"], "name": user["name"]},
         )
 
@@ -493,17 +539,22 @@ def stream_playlists(
         if "spotify" in requested_services:
             try:
                 load_all = bool(_config("spotify.load_all_playlists", True))
-                request_page_size = min(50, max(1, int(_config("spotify.request_page_size", 50))))
+                request_page_size = min(limit, 50, max(1, int(_config("spotify.request_page_size", 50))))
                 display_batch_size = max(1, int(_config("spotify.display_batch_size", 10)))
                 max_pages = max(1, int(_config("spotify.max_playlist_pages", 100)))
                 delay = max(0, int(_config("spotify.display_batch_delay_ms", 50))) / 1000
                 page_offset = resolved_spotify_offset
                 display_page = 0
+                emitted_count = 0
 
                 for page_number in range(max_pages):
+                    remaining = limit - emitted_count
+                    if remaining <= 0:
+                        break
+                    page_limit = min(request_page_size, remaining)
                     spotify_playlists, cached = _get_spotify_page(
                         resolved_user_id,
-                        request_page_size,
+                        page_limit,
                         page_offset,
                         user,
                         refresh_cached=False,
@@ -515,7 +566,11 @@ def stream_playlists(
                         break
 
                     for batch_start in range(0, len(spotify_playlists), display_batch_size):
-                        batch = spotify_playlists[batch_start:batch_start + display_batch_size]
+                        if emitted_count >= limit:
+                            break
+                        batch = spotify_playlists[
+                            batch_start:batch_start + min(display_batch_size, limit - emitted_count)
+                        ]
                         for playlist in batch:
                             if include_private or not playlist.get("private", False):
                                 yield _stream_event(
@@ -524,6 +579,7 @@ def stream_playlists(
                                     cached=cached,
                                     page=display_page,
                                 )
+                                emitted_count += 1
                         yield _stream_event(
                             "page",
                             service="spotify",
@@ -536,9 +592,9 @@ def stream_playlists(
                             time.sleep(delay)
 
                     page_for_pagination = spotify_playlists
-                    if cached:
+                    if cached and emitted_count < limit:
                         fresh_playlists = _refresh_spotify_page(
-                            resolved_user_id, request_page_size, page_offset, user
+                            resolved_user_id, page_limit, page_offset, user
                         )
                         if fresh_playlists is None:
                             yield _stream_event(
@@ -546,7 +602,11 @@ def stream_playlists(
                             )
                             break
                         for batch_start in range(0, len(fresh_playlists), display_batch_size):
-                            batch = fresh_playlists[batch_start:batch_start + display_batch_size]
+                            if emitted_count >= limit:
+                                break
+                            batch = fresh_playlists[
+                                batch_start:batch_start + min(display_batch_size, limit - emitted_count)
+                            ]
                             for playlist in batch:
                                 if include_private or not playlist.get("private", False):
                                     yield _stream_event(
@@ -555,6 +615,7 @@ def stream_playlists(
                                         cached=False,
                                         page=display_page,
                                     )
+                                    emitted_count += 1
                             yield _stream_event(
                                 "page",
                                 service="spotify",
@@ -567,9 +628,9 @@ def stream_playlists(
                                 time.sleep(delay)
                         page_for_pagination = fresh_playlists
 
-                    if not load_all or len(page_for_pagination) < request_page_size:
+                    if emitted_count >= limit or not load_all or len(page_for_pagination) < page_limit:
                         break
-                    page_offset += request_page_size
+                    page_offset += page_limit
             except Exception as error:
                 log(f"Spotify playlist stream failed: {error}", "error")
                 yield _stream_event("error", service="spotify", message="Failed to load Spotify playlists")
@@ -577,17 +638,22 @@ def stream_playlists(
         if "soundcloud" in requested_services:
             try:
                 load_all = bool(_config("soundcloud.load_all_playlists", True))
-                request_page_size = min(50, max(1, int(_config("soundcloud.request_page_size", 50))))
+                request_page_size = min(limit, 50, max(1, int(_config("soundcloud.request_page_size", 50))))
                 display_batch_size = max(1, int(_config("soundcloud.display_batch_size", 10)))
                 max_pages = max(1, int(_config("soundcloud.max_playlist_pages", 100)))
                 delay = max(0, int(_config("soundcloud.display_batch_delay_ms", 50))) / 1000
                 page_offset = resolved_soundcloud_offset
                 display_page = 0
+                emitted_count = 0
 
                 for _page_number in range(max_pages):
+                    remaining = limit - emitted_count
+                    if remaining <= 0:
+                        break
+                    page_limit = min(request_page_size, remaining)
                     soundcloud_playlists, cached = _get_soundcloud_page(
                         resolved_user_id,
-                        request_page_size,
+                        page_limit,
                         page_offset,
                         user,
                         refresh_cached=False,
@@ -597,10 +663,15 @@ def stream_playlists(
                         break
 
                     for batch_start in range(0, len(soundcloud_playlists), display_batch_size):
-                        batch = soundcloud_playlists[batch_start:batch_start + display_batch_size]
+                        if emitted_count >= limit:
+                            break
+                        batch = soundcloud_playlists[
+                            batch_start:batch_start + min(display_batch_size, limit - emitted_count)
+                        ]
                         for playlist in batch:
                             if include_private or not playlist.get("private", False):
                                 yield _stream_event("playlist", playlist=playlist, cached=cached, page=display_page)
+                                emitted_count += 1
                         yield _stream_event(
                             "page",
                             service="soundcloud",
@@ -612,12 +683,72 @@ def stream_playlists(
                         if delay:
                             time.sleep(delay)
 
-                    if not load_all or len(soundcloud_playlists) < request_page_size:
+                    if emitted_count >= limit or not load_all or len(soundcloud_playlists) < page_limit:
                         break
-                    page_offset += request_page_size
+                    page_offset += page_limit
             except Exception as error:
                 log(f"SoundCloud playlist stream failed: {error}", "error")
                 yield _stream_event("error", service="soundcloud", message="Failed to load SoundCloud playlists")
+
+        if "youtube" in requested_services:
+            try:
+                load_all = bool(_config("youtube.load_all_playlists", True))
+                request_page_size = min(limit, 50, max(1, int(_config("youtube.request_page_size", 50))))
+                display_batch_size = max(1, int(_config("youtube.display_batch_size", 10)))
+                max_pages = max(1, int(_config("youtube.max_playlist_pages", 100)))
+                delay = max(0, int(_config("youtube.display_batch_delay_ms", 50))) / 1000
+                page_offset = resolved_youtube_offset
+                display_page = 0
+                emitted_count = 0
+
+                for _page_number in range(max_pages):
+                    remaining = limit - emitted_count
+                    if remaining <= 0:
+                        break
+                    page_limit = min(request_page_size, remaining)
+                    youtube_playlists, cached = _get_youtube_page(
+                        resolved_user_id,
+                        page_limit,
+                        page_offset,
+                        user,
+                        refresh_cached=False,
+                    )
+                    if youtube_playlists is None:
+                        log(
+                            f"YouTube Music stream page returned None "
+                            f"(user_id={resolved_user_id}, limit={page_limit}, offset={page_offset})",
+                            "debug",
+                        )
+                        yield _stream_event("error", service="youtube", message="YouTube Music page request failed")
+                        break
+
+                    for batch_start in range(0, len(youtube_playlists), display_batch_size):
+                        if emitted_count >= limit:
+                            break
+                        batch = youtube_playlists[
+                            batch_start:batch_start + min(display_batch_size, limit - emitted_count)
+                        ]
+                        for playlist in batch:
+                            if include_private or not playlist.get("private", False):
+                                yield _stream_event("playlist", playlist=playlist, cached=cached, page=display_page)
+                                emitted_count += 1
+                        yield _stream_event(
+                            "page",
+                            service="youtube",
+                            page=display_page,
+                            count=len(batch),
+                            cached=cached,
+                        )
+                        display_page += 1
+                        if delay:
+                            time.sleep(delay)
+
+                    if emitted_count >= limit or not load_all or len(youtube_playlists) < page_limit:
+                        break
+                    page_offset += page_limit
+            except Exception as error:
+                log(f"YouTube Music playlist stream failed: {error}", "error")
+                yield _stream_event("error", service="youtube", message="Failed to load YouTube Music playlists")
 
         yield _stream_event("done")
 
@@ -663,7 +794,7 @@ def stream_playlist(
         raw_playlist_id, service = playlist_id, "local"
     if service == "omniplayr":
         service = "local"
-    if service not in {"local", "spotify", "soundcloud"}:
+    if service not in {"local", "spotify", "soundcloud", "youtube"}:
         raise HTTPException(status_code=400, detail=f"Unsupported playlist service: {service}")
 
     def generate():
@@ -701,11 +832,12 @@ def stream_playlist(
             cached_playlist.pop("songs", None)
             yield _stream_event("playlist", playlist=cached_playlist, cached=True)
 
-        fresh_playlist = (
-            _refresh_spotify_detail(raw_playlist_id, resolved_user_id, user)
-            if service == "spotify"
-            else _refresh_soundcloud_detail(raw_playlist_id, resolved_user_id, user)
-        )
+        if service == "spotify":
+            fresh_playlist = _refresh_spotify_detail(raw_playlist_id, resolved_user_id, user)
+        elif service == "soundcloud":
+            fresh_playlist = _refresh_soundcloud_detail(raw_playlist_id, resolved_user_id, user)
+        else:
+            fresh_playlist = _refresh_youtube_detail(raw_playlist_id, resolved_user_id, user)
         if fresh_playlist and not (
             fresh_playlist.get("private") and token_user_id != resolved_user_id
         ):
@@ -716,7 +848,11 @@ def stream_playlist(
             yield _stream_event("error", service=service, message="Playlist not found")
             return
 
-        provider_key = "spotify@built-in" if service == "spotify" else "soundcloud@built-in"
+        provider_key = {
+            "spotify": "spotify@built-in",
+            "soundcloud": "soundcloud@built-in",
+            "youtube": "youtube@built-in",
+        }[service]
         if not has_function(provider_key, "iter_playlist_songs"):
             yield _stream_event(
                 "error", service=service, message=f"{service.title()} song streaming is unavailable"
@@ -784,8 +920,10 @@ def stream_playlist(
             fresh_songs = []
             if service == "spotify":
                 live_songs = spotify_service.song_iterator(raw_playlist_id, resolved_user_id, token_user_id, user, _config)
-            else:
+            elif service == "soundcloud":
                 live_songs = soundcloud_service.song_iterator(raw_playlist_id, resolved_user_id, token_user_id, user, _config)
+            else:
+                live_songs = youtube_service.song_iterator(raw_playlist_id, resolved_user_id, token_user_id, user, _config)
             yield from song_events(live_songs, cached=False, cache_target=fresh_songs)
             _write_song_cache(
                 resolved_user_id, service, raw_playlist_id, fresh_songs, complete=True
@@ -838,6 +976,12 @@ def get_playlist(user_id: int, playlist_id: str, auth=Depends(verify_auth), x_ac
 
     if service == "soundcloud":
         playlist = get_soundcloud_playlist(raw_playlist_id, user_id)
+        if not playlist or (playlist["private"] and token_user_id != user_id):
+            raise HTTPException(status_code=404, detail="Playlist not found")
+        return playlist
+
+    if service == "youtube":
+        playlist = get_youtube_playlist(raw_playlist_id, user_id)
         if not playlist or (playlist["private"] and token_user_id != user_id):
             raise HTTPException(status_code=404, detail="Playlist not found")
         return playlist
@@ -912,6 +1056,31 @@ def get_soundcloud_playlist(playlist_id: str, user_id: int):
     return _refresh_soundcloud_detail_for_user(playlist_id, user_id)
 
 
+def _refresh_youtube_detail(playlist_id: str, user_id: int, local_owner):
+    playlist = youtube_service.refresh_detail(playlist_id, user_id, local_owner, _config)
+    if playlist is not None:
+        _write_json(_cache_path(user_id, "youtube", playlist_id, detail=True), playlist)
+    return playlist
+
+
+def _refresh_youtube_detail_for_user(playlist_id: str, user_id: int):
+    return _refresh_youtube_detail(playlist_id, user_id, get_account(user_id))
+
+
+def get_youtube_playlist(playlist_id: str, user_id: int):
+    cached = _read_json(_cache_path(user_id, "youtube", playlist_id, detail=True))
+    if isinstance(cached, dict):
+        if bool(_config("cache.refresh_in_background", True)):
+            _start_refresh(
+                f"youtube-detail-{user_id}-{playlist_id}",
+                _refresh_youtube_detail_for_user,
+                playlist_id,
+                user_id,
+            )
+        return cached
+    return _refresh_youtube_detail_for_user(playlist_id, user_id)
+
+
 def get_spotify_playlists(limit: int = 10, offset: int = 0, user_id: int = None, local_owner=None):
     return spotify_service.get_playlists(
         limit=limit,
@@ -924,6 +1093,16 @@ def get_spotify_playlists(limit: int = 10, offset: int = 0, user_id: int = None,
 
 def get_soundcloud_playlists(limit: int = 10, offset: int = 0, user_id: int = None, local_owner=None):
     return soundcloud_service.get_playlists(
+        limit=limit,
+        offset=offset,
+        user_id=user_id,
+        local_owner=local_owner,
+        config=_config,
+    )
+
+
+def get_youtube_playlists(limit: int = 10, offset: int = 0, user_id: int = None, local_owner=None):
+    return youtube_service.get_playlists(
         limit=limit,
         offset=offset,
         user_id=user_id,

@@ -1,0 +1,2 @@
+[oauth]
+cache_dir = "str # comment: Directory used for ytmusicapi OAuth token JSON files"

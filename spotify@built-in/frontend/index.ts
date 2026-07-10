@@ -11,6 +11,7 @@ import {
     createPopup,
     closePopup,
 } from '@omniplayr/plugins';
+import translations from './translations';
 
 function mountSetupPopup() {
     const popupId = 'spotify-setup';
@@ -18,7 +19,7 @@ function mountSetupPopup() {
     createPopup({
         id: popupId,
         title: 'Spotify',
-        subtitle: 'Connect your Spotify account',
+        subtitle: translations.t('setup.desc'),
         close_button: true,
         mobileFullscreen: true,
         group: 'spotify-setup',
@@ -34,7 +35,7 @@ export function init() {
             player.registerPlugin('spotify', new SpotifySourcePlugin());
             registerPluginsMenuItem('spotify@built-in', {
                 icon: LogOut,
-                label: 'Log Out',
+                label: translations.t('setup.button.logout'),
                 function: () => {
                     disconnect().then(() => location.reload());
                 },
@@ -42,7 +43,7 @@ export function init() {
         } else {
             registerPluginsMenuItem('spotify@built-in', {
                 icon: LogIn,
-                label: 'Log In',
+                label: translations.t('setup.button.login'),
                 function: mountSetupPopup,
                 needsInteraction: true,
             });

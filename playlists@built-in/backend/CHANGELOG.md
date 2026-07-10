@@ -4,6 +4,23 @@ All notable changes to `playlists@built-in` are documented here. This changelog 
 
 ## [Unreleased]
 
+## [beta-1.3.1] - 2026-07-08
+
+### Fixed
+
+- Backend: Added YouTube Music to the checked-in live settings file so `youtube` is accepted as a playlist service after install/update.
+- Backend: Capped streamed external playlist collection requests to the request `limit` per service instead of continuing through all Spotify, SoundCloud, or YouTube Music pages.
+- Backend: Skips YouTube Music cleanly when the source plugin is installed but not connected, instead of emitting a playlist page failure.
+- Backend: Added debug logs around YouTube Music auth status and playlist page failures.
+- Frontend: Explicitly requests YouTube Music in the Home playlist stream so older user settings cannot omit it from the Home page.
+
+## [beta-1.3.0] - 2026-07-08
+
+### Added
+
+- Backend: Added YouTube Music playlist provider support through `youtube@built-in`.
+- Frontend: Added YouTube Music playlist sections and service pages.
+
 ## [beta-1.2.0] - 2026-07-08
 
 ### Added

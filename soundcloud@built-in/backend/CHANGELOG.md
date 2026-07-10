@@ -4,6 +4,12 @@ All notable changes to `soundcloud@built-in` are documented here. This changelog
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-07-08
+
+### Changed
+
+- Frontend: Moved the SoundCloud setup popup and menu labels to plugin translations.
+
 ## [2.1.0] - 2026-07-06
 
 - Backend: Switched imports to the new SDK.

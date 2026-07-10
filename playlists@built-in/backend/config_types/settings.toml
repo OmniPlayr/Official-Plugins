@@ -11,6 +11,7 @@ enabled = "bool # comment: Enable incremental NDJSON playlist responses # liveup
 default_services = "str # comment: Comma-separated services queried when the request does not specify services # liveupdate:true"
 check_spotify_playlists = "bool # comment: Include Spotify when loading playlist collections # liveupdate:true"
 check_soundcloud_playlists = "bool # comment: Include SoundCloud when loading playlist collections # liveupdate:true"
+check_youtube_playlists = "bool # comment: Include YouTube Music when loading playlist collections # liveupdate:true"
 
 [spotify]
 load_all_playlists = "bool # comment: Continue loading Spotify playlist pages until all are streamed # liveupdate:true"
@@ -35,6 +36,18 @@ song_display_batch_size = "int # comment: Number of SoundCloud songs streamed be
 song_display_batch_delay_ms = "int # comment: Small delay between streamed SoundCloud song batches # liveupdate:true"
 song_request_delay_ms = "int # comment: Minimum delay between SoundCloud track page requests to reduce rate-limit pressure # liveupdate:true"
 max_song_pages = "int # comment: Safety limit for SoundCloud track pagination # liveupdate:true"
+
+[youtube]
+load_all_playlists = "bool # comment: Continue loading YouTube Music playlist pages until all are streamed # liveupdate:true"
+request_page_size = "int # comment: YouTube Music playlists requested per API call, up to 50 # liveupdate:true"
+display_batch_size = "int # comment: YouTube Music playlist cards released to the frontend per streamed batch # liveupdate:true"
+display_batch_delay_ms = "int # comment: Delay between YouTube Music playlist batches # liveupdate:true"
+max_playlist_pages = "int # comment: Safety limit for YouTube Music playlist pagination # liveupdate:true"
+song_page_size = "int # comment: YouTube Music tracks processed per batch # liveupdate:true"
+song_display_batch_size = "int # comment: Number of YouTube Music songs streamed before applying the display delay # liveupdate:true"
+song_display_batch_delay_ms = "int # comment: Small delay between streamed YouTube Music song batches # liveupdate:true"
+song_request_delay_ms = "int # comment: Minimum delay between YouTube Music track page requests # liveupdate:true"
+max_song_pages = "int # comment: Safety limit for YouTube Music track pagination # liveupdate:true"
 
 [pagination]
 default_limit = "int # comment: Default number of playlists requested per service # liveupdate:true"

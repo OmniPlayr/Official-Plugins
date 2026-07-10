@@ -1,6 +1,6 @@
 # playlists@built-in
 
-Create, list, and stream playlist data inside OmniPlayr. This plugin manages local OmniPlayr playlists and can also surface Spotify and SoundCloud playlists when their source plugins are installed and connected.
+Create, list, and stream playlist data inside OmniPlayr. This plugin manages local OmniPlayr playlists and can also surface Spotify, SoundCloud, and YouTube Music playlists when their source plugins are installed and connected.
 
 You can find this plugin at:
 **[https://omniplayr.wokki20.nl/packages/package/playlists@built-in](https://omniplayr.wokki20.nl/packages/package/playlists@built-in)**
@@ -17,10 +17,11 @@ Once enabled, `playlists@built-in` will:
 - Stream songs from individual local playlists
 - Integrate with `spotify@built-in` to show Spotify playlists beside local playlists
 - Integrate with `soundcloud@built-in` to show SoundCloud playlists beside local playlists
+- Integrate with `youtube@built-in` to show YouTube Music playlists beside local playlists
 - Cache external playlist summaries, details, and song lists to reduce repeated API work
 - Respect private playlist visibility so users only see private playlists they own
 
-Local playlists are stored in OmniPlayr's plugin database tables. Spotify and SoundCloud playlists are read through their source plugins and cached on disk.
+Local playlists are stored in OmniPlayr's plugin database tables. Spotify, SoundCloud, and YouTube Music playlists are read through their source plugins and cached on disk.
 
 ---
 
@@ -29,8 +30,9 @@ Local playlists are stored in OmniPlayr's plugin database tables. Spotify and So
 - OmniPlayr account authentication
 - `spotify@built-in` installed and connected if Spotify playlists should appear
 - `soundcloud@built-in` installed and connected if SoundCloud playlists should appear
+- `youtube@built-in` installed and connected if YouTube Music playlists should appear
 
-External playlist support is optional. If Spotify or SoundCloud is unavailable, local playlists continue to work.
+External playlist support is optional. If Spotify, SoundCloud, or YouTube Music is unavailable, local playlists continue to work.
 
 ---
 
@@ -49,9 +51,10 @@ song_ttl_seconds = 300
 enabled = true
 
 [providers]
-default_services = "local,spotify,soundcloud"
+default_services = "local,spotify,soundcloud,youtube"
 check_spotify_playlists = true
 check_soundcloud_playlists = true
+check_youtube_playlists = true
 
 [spotify]
 load_all_playlists = true
@@ -66,6 +69,18 @@ song_request_delay_ms = 250
 max_song_pages = 100
 
 [soundcloud]
+load_all_playlists = true
+request_page_size = 50
+display_batch_size = 10
+display_batch_delay_ms = 50
+max_playlist_pages = 100
+song_page_size = 50
+song_display_batch_size = 20
+song_display_batch_delay_ms = 10
+song_request_delay_ms = 250
+max_song_pages = 100
+
+[youtube]
 load_all_playlists = true
 request_page_size = 50
 display_batch_size = 10
@@ -92,9 +107,10 @@ timeout_seconds = 10
 | `cache.cache_dir` | Directory used for playlist cache files |
 | `cache.refresh_in_background` | Refresh cached Spotify data in the background |
 | `streaming.enabled` | Enable incremental NDJSON playlist responses |
-| `providers.default_services` | Comma-separated default services, such as `local,spotify,soundcloud` |
+| `providers.default_services` | Comma-separated default services, such as `local,spotify,soundcloud,youtube` |
 | `providers.check_spotify_playlists` | Include Spotify when loading playlist collections |
 | `providers.check_soundcloud_playlists` | Include SoundCloud when loading playlist collections |
+| `providers.check_youtube_playlists` | Include YouTube Music when loading playlist collections |
 | `spotify.load_all_playlists` | Continue loading Spotify pages until all playlists are streamed |
 | `spotify.request_page_size` | Spotify playlists requested per API call, up to 50 |
 | `spotify.display_batch_size` | Playlist cards emitted per streamed batch |
@@ -107,6 +123,12 @@ timeout_seconds = 10
 | `soundcloud.max_playlist_pages` | Safety limit for SoundCloud playlist pagination |
 | `soundcloud.song_page_size` | SoundCloud tracks processed per batch |
 | `soundcloud.max_song_pages` | Safety limit for SoundCloud track pagination |
+| `youtube.load_all_playlists` | Continue loading YouTube Music pages until all playlists are streamed |
+| `youtube.request_page_size` | YouTube Music playlists requested per API call, up to 50 |
+| `youtube.display_batch_size` | YouTube Music playlist cards emitted per streamed batch |
+| `youtube.max_playlist_pages` | Safety limit for YouTube Music playlist pagination |
+| `youtube.song_page_size` | YouTube Music tracks processed per batch |
+| `youtube.max_song_pages` | Safety limit for YouTube Music track pagination |
 | `pagination.default_limit` | Default number of playlists requested per service |
 | `pagination.max_limit` | Maximum accepted playlist limit per service |
 | `requests.timeout_seconds` | Timeout for external provider integration requests |
@@ -125,13 +147,13 @@ All endpoints require authentication and the `X-Account-Token` header.
 
 ### `GET /playlists/{user_id}`
 
-Returns a combined list of local, Spotify, and SoundCloud playlist summaries.
+Returns a combined list of local, Spotify, SoundCloud, and YouTube Music playlist summaries.
 
 | Query param | Type | Description |
 |-------------|------|-------------|
 | `limit` | `int` | Optional playlist limit per service |
 | `offset` | `int` | Optional playlist offset |
-| `services` | `string` | Optional comma-separated services: `local`, `spotify`, `soundcloud`, or `omniplayr` |
+| `services` | `string` | Optional comma-separated services: `local`, `spotify`, `soundcloud`, `youtube`, or `omniplayr` |
 
 ---
 
@@ -144,6 +166,7 @@ Streams playlist summaries as newline-delimited JSON events.
 | `limit` | `int` | Optional playlist limit |
 | `offset` | `int` | Optional local playlist offset |
 | `spotify_offset` | `int` | Optional Spotify-specific offset |
+| `youtube_offset` | `int` | Optional YouTube-specific offset |
 | `services` | `string` | Optional comma-separated services |
 
 Events include `start`, `playlist`, `page`, `error`, and `done`.
@@ -154,7 +177,7 @@ Events include `start`, `playlist`, `page`, `error`, and `done`.
 
 Returns a single playlist.
 
-Use plain numeric IDs for local playlists. Use `{spotify_playlist_id}:spotify` for Spotify playlists and `{soundcloud_playlist_id}:soundcloud` for SoundCloud playlists.
+Use plain numeric IDs for local playlists. Use `{spotify_playlist_id}:spotify` for Spotify playlists, `{soundcloud_playlist_id}:soundcloud` for SoundCloud playlists, and `{youtube_playlist_id}:youtube` for YouTube Music playlists.
 
 ---
 
@@ -168,7 +191,7 @@ Events include `start`, `playlist`, `song`, `songs_done`, `error`, and `done`.
 
 ## Provider Integrations
 
-Spotify support lives in `services/spotify.py` and talks to `spotify@built-in` through OmniPlayr's plugin function system. SoundCloud support lives in `services/soundcloud.py` and talks to `soundcloud@built-in` the same way. The playlist plugin does not authenticate with external services directly.
+Spotify support lives in `services/spotify.py` and talks to `spotify@built-in` through OmniPlayr's plugin function system. SoundCloud support lives in `services/soundcloud.py` and talks to `soundcloud@built-in` the same way. YouTube Music support lives in `services/youtube.py` and talks to `youtube@built-in`. The playlist plugin does not authenticate with external services directly.
 
 External provider integrations provide:
 

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Check, Copy } from 'lucide-react';
 import { consumeConnectedParam, getStatus, saveCredentials, startAuth } from './auth';
-import { getConfig } from '../../modules/config'; // This import is not in the SDK so that is why it shows an error, but it works fine
+import translations from './translations';
 import './SoundCloudSetup.css';
 
 type Step = 'loading' | 'credentials' | 'connect' | 'success' | 'error';
@@ -12,6 +12,7 @@ interface Props {
 }
 
 export default function SoundCloudSetup({ onDone }: Props) {
+    const { t } = translations.useTranslation();
     const [step, setStep] = useState<Step>('loading');
     const [clientId, setClientId] = useState('');
     const [clientSecret, setClientSecret] = useState('');
@@ -19,16 +20,8 @@ export default function SoundCloudSetup({ onDone }: Props) {
     const [saving, setSaving] = useState(false);
     const [connecting, setConnecting] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [redirectUri, setRedirectUri] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
-
-    const apiUrl = getConfig('api.apiUrl');
-    if (typeof apiUrl !== 'string') throw new Error('api.apiUrl must be a string');
-
-    const isLocal = /localhost|127\.0\.0\.1/.test(apiUrl);
-    const baseUrl = isLocal
-        ? apiUrl.replace(/^https?:\/\//, 'http://')
-        : apiUrl.replace(/^http:\/\//, 'https://');
-    const redirectUri = baseUrl + '/api/plugin/soundcloud/callback';
 
     useEffect(() => {
         const justConnected = consumeConnectedParam();
@@ -40,6 +33,7 @@ export default function SoundCloudSetup({ onDone }: Props) {
 
         getStatus()
             .then(status => {
+                setRedirectUri(status.redirect_uri);
                 if (status.connected) {
                     onDone();
                 } else if (status.client_id_set) {
@@ -50,7 +44,7 @@ export default function SoundCloudSetup({ onDone }: Props) {
                 }
             })
             .catch(() => {
-                setErrorMsg('Could not reach the backend.');
+                setErrorMsg(t('setup.error.backend'));
                 setStep('error');
             });
     }, []);
@@ -70,7 +64,7 @@ export default function SoundCloudSetup({ onDone }: Props) {
             await saveCredentials(clientId.trim(), clientSecret.trim());
             setStep('connect');
         } catch {
-            setErrorMsg('Failed to save SoundCloud app credentials. Please try again.');
+            setErrorMsg(t('setup.error.save-credentials'));
             setStep('error');
         } finally {
             setSaving(false);
@@ -82,7 +76,7 @@ export default function SoundCloudSetup({ onDone }: Props) {
         try {
             await startAuth();
         } catch {
-            setErrorMsg('Could not start the SoundCloud login flow. Please try again.');
+            setErrorMsg(t('setup.error.start-auth'));
             setStep('error');
             setConnecting(false);
         }
@@ -126,11 +120,11 @@ export default function SoundCloudSetup({ onDone }: Props) {
             <div className="sc-body">
                 {step === 'error' && (
                     <>
-                        <p className="sc-title">Something went wrong</p>
+                        <p className="sc-title">{t('setup.error.title')}</p>
                         <p className="sc-error-msg">{errorMsg}</p>
                         <div className="sc-footer">
-                            <button className="sc-btn sc-btn--ghost" onClick={close}>Close</button>
-                            <button className="sc-btn sc-btn--secondary" onClick={() => setStep('credentials')}>Start over</button>
+                            <button className="sc-btn sc-btn--ghost" onClick={close}>{t('setup.action.close')}</button>
+                            <button className="sc-btn sc-btn--secondary" onClick={() => setStep('credentials')}>{t('setup.action.start-over')}</button>
                         </div>
                     </>
                 )}
@@ -140,39 +134,39 @@ export default function SoundCloudSetup({ onDone }: Props) {
                             <div className="sc-success__icon">
                                 <Check size={22} strokeWidth={2.5} />
                             </div>
-                            <p className="sc-success__title">SoundCloud connected</p>
-                            <p className="sc-success__desc">SoundCloud tracks and playlists are ready in OmniPlayr.</p>
+                            <p className="sc-success__title">{t('setup.success.title')}</p>
+                            <p className="sc-success__desc">{t('setup.success.desc')}</p>
                         </div>
                     )}
 
                     {step === 'credentials' && (
                         <>
-                            <p className="sc-title">Connect SoundCloud</p>
-                            <p className="sc-desc">Public SoundCloud URLs can play without connecting. Connect an account only if you want private playlists and account library access. SoundCloud currently requires Artist Pro for app registration.</p>
+                            <p className="sc-title">{t('setup.credentials.title')}</p>
+                            <p className="sc-desc">{t('setup.credentials.desc')}</p>
 
                             <div className="sc-instructions">
                                 <div className="sc-step">
                                     <span className="sc-step__num">1</span>
-                                    <span>Go to <a href="https://soundcloud.com/you/apps" target="_blank" rel="noreferrer">soundcloud.com/you/apps</a> and create an app</span>
+                                    <span>{t('setup.credentials.step1.prefix')} <a href="https://soundcloud.com/you/apps" target="_blank" rel="noreferrer">soundcloud.com/you/apps</a> {t('setup.credentials.step1.suffix')}</span>
                                 </div>
                                 <div className="sc-step">
                                     <span className="sc-step__num">2</span>
-                                    <span>Add this exact redirect URI to the app:</span>
+                                    <span>{t('setup.credentials.step2')}</span>
                                 </div>
                                 <div className="sc-uri-box">
                                     <code>{redirectUri}</code>
-                                    <button className={`sc-copy-btn${copied ? ' sc-copy-btn--copied' : ''}`} onClick={handleCopy} title="Copy">
+                                    <button className={`sc-copy-btn${copied ? ' sc-copy-btn--copied' : ''}`} onClick={handleCopy} title={t('setup.action.copy')}>
                                         {copied ? <Check className="copy-icon copied" /> : <Copy className="copy-icon" />}
                                     </button>
                                 </div>
                                 <div className="sc-step">
                                     <span className="sc-step__num">3</span>
-                                    <span>Paste the Client ID and Client Secret from the SoundCloud app</span>
+                                    <span>{t('setup.credentials.step3')}</span>
                                 </div>
                             </div>
 
                             <div className="sc-field">
-                                <label className="sc-label" htmlFor="sc-client-id-input">Client ID</label>
+                                <label className="sc-label" htmlFor="sc-client-id-input">{t('setup.credentials.client-id')}</label>
                                 <input
                                     id="sc-client-id-input"
                                     ref={inputRef}
@@ -181,14 +175,14 @@ export default function SoundCloudSetup({ onDone }: Props) {
                                     value={clientId}
                                     onChange={e => setClientId(e.target.value)}
                                     onKeyDown={handleKeyDown}
-                                    placeholder="Paste your Client ID"
+                                    placeholder={t('setup.credentials.client-id-placeholder')}
                                     spellCheck={false}
                                     autoComplete="off"
                                 />
                             </div>
 
                             <div className="sc-field">
-                                <label className="sc-label" htmlFor="sc-client-secret-input">Client Secret</label>
+                                <label className="sc-label" htmlFor="sc-client-secret-input">{t('setup.credentials.client-secret')}</label>
                                 <input
                                     id="sc-client-secret-input"
                                     className="sc-input"
@@ -196,16 +190,16 @@ export default function SoundCloudSetup({ onDone }: Props) {
                                     value={clientSecret}
                                     onChange={e => setClientSecret(e.target.value)}
                                     onKeyDown={handleKeyDown}
-                                    placeholder="Paste your Client Secret"
+                                    placeholder={t('setup.credentials.client-secret-placeholder')}
                                     spellCheck={false}
                                     autoComplete="off"
                                 />
                             </div>
 
                             <div className="sc-footer">
-                                <button className="sc-btn sc-btn--ghost" onClick={close}>Cancel</button>
+                                <button className="sc-btn sc-btn--ghost" onClick={close}>{t('setup.action.cancel')}</button>
                                 <button className="sc-btn sc-btn--primary" onClick={handleSave} disabled={!clientId.trim() || !clientSecret.trim() || saving}>
-                                    {saving ? 'Saving...' : 'Next'}
+                                    {saving ? t('setup.action.saving') : t('setup.action.next')}
                                 </button>
                             </div>
                         </>
@@ -213,18 +207,18 @@ export default function SoundCloudSetup({ onDone }: Props) {
 
                 {step === 'connect' && (
                     <>
-                        <p className="sc-title">Log in with SoundCloud</p>
-                        <p className="sc-desc">Credentials saved. Authorize OmniPlayr with SoundCloud to load private playlists and track metadata.</p>
+                        <p className="sc-title">{t('setup.connect.title')}</p>
+                        <p className="sc-desc">{t('setup.connect.desc')}</p>
                         <div className="sc-uri-box">
                             <code>{redirectUri}</code>
-                            <button className={`sc-copy-btn${copied ? ' sc-copy-btn--copied' : ''}`} onClick={handleCopy} title="Copy">
+                            <button className={`sc-copy-btn${copied ? ' sc-copy-btn--copied' : ''}`} onClick={handleCopy} title={t('setup.action.copy')}>
                                 {copied ? <Check className="copy-icon copied" /> : <Copy className="copy-icon" />}
                             </button>
                         </div>
                         <div className="sc-footer">
-                            <button className="sc-btn sc-btn--ghost" onClick={() => setStep('credentials')}>Back</button>
+                            <button className="sc-btn sc-btn--ghost" onClick={() => setStep('credentials')}>{t('setup.action.back')}</button>
                             <button className="sc-btn sc-btn--soundcloud" onClick={handleConnect} disabled={connecting}>
-                                {connecting ? 'Redirecting...' : 'Log in with SoundCloud'}
+                                {connecting ? t('setup.action.redirecting') : t('setup.action.login')}
                             </button>
                         </div>
                     </>
