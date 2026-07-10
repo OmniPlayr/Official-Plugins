@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from ytmusicapi import OAuthCredentials, YTMusic
 
 from omniplayr.plugins import api, expose, get_plugin_config, get_token_user, log, verify_auth
+from .metadata import get_artwork
 
 PLUGIN_KEY = "youtube@built-in"
 YOUTUBE_SCOPE = "https://www.googleapis.com/auth/youtube"
@@ -460,7 +461,7 @@ def _track_metadata(track: dict) -> dict:
         "year": track.get("year"),
         "track": None,
         "duration": duration,
-        "album_art": _thumbnail_url(track.get("thumbnails")),
+        "album_art": get_artwork(_thumbnail_url(track.get("thumbnails"))),
         "explicit": bool(track.get("isExplicit", False)),
     }
 
@@ -492,7 +493,7 @@ def get_metadata(user_id: int, song_id: str, timeout_seconds: int = 10) -> dict:
         "year": None,
         "track": None,
         "duration": int(details["lengthSeconds"]) if details.get("lengthSeconds") else None,
-        "album_art": _thumbnail_url(thumbnails),
+        "album_art": get_artwork(_thumbnail_url(thumbnails)),
         "explicit": False,
     }
 

@@ -4,6 +4,12 @@ All notable changes to `youtube@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-10
+
+### Fixed
+
+- Restored base64-encoded artwork for song and playlist metadata, with backend caching to prevent repeated thumbnail requests and frontend image-host rate limits.
+
 ## [1.0.0] - 2026-07-10
 
 ### Added
