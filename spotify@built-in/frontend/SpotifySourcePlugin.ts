@@ -3,7 +3,7 @@ import {
     type SourcePlugin,
     type TrackMetadata
 } from '@omniplayr/plugins';
-import { sdkPlay, sdkPause, sdkResume, sdkSeek, sdkSetVolume, sdkActivateElement, onStateChange, getState, waitReady as sdkWaitReady, startVolumePolling, stopVolumePolling } from './sdk';
+import { sdkPlay, sdkPause, sdkResume, sdkSeek, sdkSetVolume, sdkActivateElement, onStateChange, getState, waitReady as sdkWaitReady } from './sdk';
 import type { SpotifyState } from './sdk';
 
 const VOLUME_STORAGE_KEY = 'player_volume';
@@ -110,8 +110,6 @@ export default class SpotifySourcePlugin implements SourcePlugin {
             throw error;
         }
 
-        await sdkSetVolume(this._volume);
-
         if (!autoplay) await sdkPause();
 
         await waitForSpotifyTrackState(songId, state => {
@@ -130,16 +128,9 @@ export default class SpotifySourcePlugin implements SourcePlugin {
             });
 
             callbacks.onReady();
-
-            startVolumePolling(async (v: number) => {
-                if (this.transientVolumeActive) return;
-
-                this._volume = v;
-                const storage = getVolumeStorage();
-                storage?.setItem(VOLUME_STORAGE_KEY, String(v));
-                callbacks.onStateChange();
-            }, window.sdkPlayer);
         });
+
+        await sdkSetVolume(this._volume);
 
         this.unsubscribe = onStateChange(state => {
             if (!state) return;
@@ -166,7 +157,7 @@ export default class SpotifySourcePlugin implements SourcePlugin {
     setVolume(fraction: number) {
         this.transientVolumeActive = false;
         this._volume = fraction;
-        sdkSetVolume(fraction);
+        sdkSetVolume(fraction).catch(error => console.warn('[spotify@built-in] Failed to set Spotify volume.', error));
         const storage = getVolumeStorage();
         storage?.setItem(VOLUME_STORAGE_KEY, String(fraction));
     }
@@ -174,7 +165,7 @@ export default class SpotifySourcePlugin implements SourcePlugin {
     setTransientVolume(fraction: number) {
         const clamped = Math.max(0, Math.min(1, fraction));
         this.transientVolumeActive = Math.abs(clamped - this._volume) > 0.001;
-        sdkSetVolume(clamped);
+        sdkSetVolume(clamped).catch(error => console.warn('[spotify@built-in] Failed to set transient Spotify volume.', error));
     }
 
     getVolume() {
@@ -197,7 +188,6 @@ export default class SpotifySourcePlugin implements SourcePlugin {
     destroy() {
         this.unsubscribe?.();
         this.stopTicker();
-        stopVolumePolling();
-        sdkPause();
+        sdkPause().catch(error => console.warn('[spotify@built-in] Failed to pause Spotify playback during cleanup.', error));
     }
 }

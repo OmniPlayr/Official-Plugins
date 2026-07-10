@@ -45,11 +45,7 @@ export interface SpotifyPlayer {
     addListener(event: 'player_state_changed', cb: (state: SpotifyState | null) => void): void;
     connect(): Promise<boolean>;
     activateElement(): Promise<void>;
-    pause(): Promise<void>;
-    resume(): Promise<void>;
-    seek(ms: number): Promise<void>;
     setVolume(fraction: number): Promise<void>;
-    getVolume(): Promise<number>;
     disconnect(): void;
 }
 
@@ -61,7 +57,6 @@ let currentState: SpotifyState | null = null;
 const stateListeners = new Set<StateListener>();
 let readyResolve: (() => void) | null = null;
 let readyPromise = new Promise<void>(r => { readyResolve = r; });
-let volumeInterval: ReturnType<typeof setInterval> | null = null;
 let sdkLoadStarted = false;
 let lastPlaybackErrorMessage: string | null = null;
 let lastPlaybackErrorAt = 0;
@@ -117,6 +112,34 @@ async function getSpotifyJson(path: string, token: string) {
     }
 
     return { ok: res.ok, status: res.status, body };
+}
+
+async function putSpotifyCommand(path: string, errorLabel: string) {
+    const targetDeviceId = deviceId;
+    if (!targetDeviceId) return;
+
+    const token = await getValidToken();
+    if (!token) throw new Error('Spotify token is unavailable');
+
+    const separator = path.includes('?') ? '&' : '?';
+    const res = await fetch(
+        `https://api.spotify.com/v1${path}${separator}device_id=${encodeURIComponent(targetDeviceId)}`,
+        {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${token}` },
+        }
+    );
+
+    if (res.ok || res.status === 204) return;
+
+    let details = '';
+    try {
+        details = await res.text();
+    } catch {
+        details = '';
+    }
+
+    throw new Error(`${errorLabel}: ${res.status}${details ? ` ${details}` : ''}`);
 }
 
 async function diagnosePlaybackError(message: string) {
@@ -221,6 +244,7 @@ function scheduleReconnect() {
 
         try {
             deviceId = null;
+            notifyState(null);
             resetReady();
             const connected = await sdkPlayer.connect();
 
@@ -302,6 +326,7 @@ export async function loadSdk(): Promise<boolean> {
         sdkPlayer.addListener('not_ready', () => {
             spotifyConsoleError('Spotify Web Playback SDK device became unavailable.');
             deviceId = null;
+            notifyState(null);
             resetReady();
         });
 
@@ -328,6 +353,7 @@ export async function loadSdk(): Promise<boolean> {
             if (!isDuplicate) diagnosePlaybackError(text);
 
             if (text.toLowerCase() === 'playback error') {
+                notifyState(null);
                 scheduleReconnect();
             }
         });
@@ -381,38 +407,28 @@ export async function sdkPlay(trackId: string) {
     }
 }
 
-export async function sdkPause() { await sdkPlayer?.pause(); }
+export async function sdkPause() {
+    await putSpotifyCommand('/me/player/pause', 'Spotify pause failed');
+}
 
 export async function sdkResume() {
     await sdkPlayer?.activateElement();
-    await sdkPlayer?.resume();
+    await putSpotifyCommand('/me/player/play', 'Spotify resume failed');
 }
 
-export async function sdkSeek(ms: number) { await sdkPlayer?.seek(ms); }
-export async function sdkSetVolume(fraction: number) { await sdkPlayer?.setVolume(fraction); }
+export async function sdkSeek(ms: number) {
+    await putSpotifyCommand(
+        `/me/player/seek?position_ms=${Math.max(0, Math.floor(ms))}`,
+        'Spotify seek failed'
+    );
+}
+
+export async function sdkSetVolume(fraction: number) {
+    if (!currentState) return;
+    await sdkPlayer?.setVolume(Math.max(0, Math.min(1, fraction)));
+}
 export function sdkActivateElement() { return sdkPlayer?.activateElement(); }
 
-export function startVolumePolling(onChange: (v: number) => void, sdkPlayer: SpotifyPlayer | null | undefined) {
-    if (volumeInterval || !sdkPlayer) return;
-
-    let last = -1;
-
-    volumeInterval = setInterval(async () => {
-        const v = await sdkPlayer.getVolume();
-
-        if (v !== last) {
-            last = v;
-            onChange(v);
-        }
-    }, 1000);
-}
-
-export function stopVolumePolling() {
-    if (volumeInterval) {
-        clearInterval(volumeInterval);
-        volumeInterval = null;
-    }
-}
 export function sdkDisconnect() {
     sdkPlayer?.disconnect();
     sdkPlayer = null;

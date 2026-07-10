@@ -4,6 +4,13 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.2.2] - 2026-07-10
+
+### Fixed
+
+- Frontend: Replaced fragile local SDK playback-control calls with device-targeted Spotify Web API commands, preventing Firefox's repeated `_streamer is undefined` errors.
+- Frontend: Removed continuous local volume polling and now sends volume changes only while the SDK has an active playback state.
+
 ## [2.2.1] - 2026-07-08
 
 ### Changed
