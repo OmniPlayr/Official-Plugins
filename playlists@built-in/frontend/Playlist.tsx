@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import translations from ".";
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Check, ChevronLeft, ChevronRight, Clock, Code2, Copy, Disc3, ListPlus, LoaderCircle, Pause, Play, Search, Share2, Shuffle, User, Volume2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Clock, Code2, Copy, Disc3, List, ListPlus, LoaderCircle, Pause, Play, Search, Share2, Shuffle, User, Volume2 } from "lucide-react";
 import { Tooltip } from "react-tooltip";
 import './styles/Playlist.css';
 import liked from './assets/liked.svg';
@@ -18,6 +18,7 @@ import {
     createPopup,
     hasFrontendPlugin,
     navigate,
+    emit,
 } from '@omniplayr/plugins';
 
 type UserAccount = {
@@ -153,6 +154,8 @@ function queueItem(song: PlaylistSong, playlist: Playlist): QueueItem {
             spotifyUri: song.spotify_uri,
             playlistService: playlist.service,
             playlistId: playlist.id,
+            playlistName: playlist.name,
+            playlistPosition: song.position,
         },
     };
 }
@@ -528,6 +531,7 @@ function PlaylistSongActionsPopup({
     const embed = getSongEmbed(song);
     const canShare = song.source_type !== 'local' && (shareLink || embed);
     const [artistPage, setArtistPage] = useState<ArtistPageInfo>(() => getCachedArtistPage(song) ?? EMPTY_ARTIST_PAGE);
+    const [queuedPlugin, setQueuedPlugin] = useState<boolean | null>(null);
 
     useEffect(() => {
         if (getCachedArtistPage(song)) return;
@@ -543,6 +547,10 @@ function PlaylistSongActionsPopup({
         };
     }, [song]);
 
+    useEffect(() => {
+        setQueuedPlugin(hasFrontendPlugin('queued@built-in'));
+    })
+
     return (
         <div className='playlist-song-popup-actions'>
             <button
@@ -555,6 +563,12 @@ function PlaylistSongActionsPopup({
                 <ListPlus className='playlist-song-popup-action-icon' />
                 <span>{t('playlists.playlist.context.queue')}</span>
             </button>
+            {queuedPlugin && (
+                <button className='playlist-song-popup-action' onClick={() => emit('queue.mobile:open')}>
+                    <List className='playlist-song-popup-action-icon' />
+                    <span>{t('playlists.playlist.context.open-queue')}</span>
+                </button>
+            )}
             {artistPage.artist_exists && (
                 <button className='playlist-song-popup-action' onClick={() => navigate(artistPage.artist_url)}>
                     <User className='playlist-song-popup-action-icon' />

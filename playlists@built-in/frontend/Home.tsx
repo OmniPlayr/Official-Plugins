@@ -37,6 +37,7 @@ export type PlaylistSongMetadata = {
 export type PlaylistSong = {
     source_type: string;
     song_id: string;
+    position?: number;
     spotify_uri: string | null;
     metadata: PlaylistSongMetadata;
 };
@@ -128,6 +129,8 @@ export function queueItem(song: PlaylistSong, playlist: Playlist): QueueItem {
             spotifyUri: song.spotify_uri,
             playlistService: playlist.service,
             playlistId: playlist.id,
+            playlistName: playlist.name,
+            playlistPosition: song.position,
         },
     };
 }

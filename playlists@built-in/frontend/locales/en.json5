@@ -34,6 +34,7 @@
     "playlists.playlist.songs.table.date-added": "Date Added",
 
     "playlists.playlist.context.queue": "Add to Queue",
+    "playlists.playlist.context.open-queue": "Open Queue",
     "playlists.playlist.context.share": "Share",
     "playlists.playlist.context.copy-link": "Copy Link",
     "playlists.playlist.context.copy-embed": "Copy Embed",

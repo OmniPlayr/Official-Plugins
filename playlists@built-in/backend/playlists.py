@@ -3,7 +3,7 @@ import hashlib
 import time
 from pathlib import Path
 from threading import RLock, Thread
-from fastapi import Depends, Header, HTTPException, Query
+from fastapi import Body, Depends, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from .services import soundcloud as soundcloud_service
 from .services import spotify as spotify_service
@@ -423,6 +423,79 @@ def get_playlists(
 
 def _stream_event(event_type: str, **payload) -> bytes:
     return (json.dumps({"type": event_type, **payload}, ensure_ascii=False, default=str) + "\n").encode("utf-8")
+
+
+def _split_playlist_id(playlist_id: str):
+    if ":" in playlist_id:
+        raw_playlist_id, service = playlist_id.rsplit(":", 1)
+        service = service.lower()
+    else:
+        raw_playlist_id, service = playlist_id, "local"
+    if service == "omniplayr":
+        service = "local"
+    if service not in {"local", "spotify", "soundcloud", "youtube"}:
+        raise HTTPException(status_code=400, detail=f"Unsupported playlist service: {service}")
+    return raw_playlist_id, service
+
+
+def _resolve_user_id(user_id: str, token_user_id: int):
+    if user_id.lower() == "me":
+        return token_user_id
+    try:
+        return int(user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid user ID")
+
+
+def _queue_request_key(song):
+    source_type = song.get("source_type") or song.get("sourceType")
+    song_id = song.get("song_id") or song.get("songId")
+    return f"{source_type}:{song_id}"
+
+
+def _queue_request_position(song):
+    position = song.get("position")
+    if position is None:
+        position = song.get("playlistPosition")
+    try:
+        return int(position) if position is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _ordered_requested_playlist_songs(requested_songs, playlist_songs):
+    songs_by_key = {}
+    songs_by_position = {}
+
+    for song in playlist_songs:
+        key = _queue_request_key(song)
+        songs_by_key.setdefault(key, []).append(song)
+        position = song.get("position")
+        if position is not None:
+            songs_by_position[position] = song
+
+    occurrence_counts = {}
+    ordered = []
+    missing = []
+
+    for requested in requested_songs:
+        key = _queue_request_key(requested)
+        position = _queue_request_position(requested)
+        match = songs_by_position.get(position) if position is not None else None
+
+        if match is None:
+            occurrence = occurrence_counts.get(key, 0)
+            occurrence_counts[key] = occurrence + 1
+            matches = songs_by_key.get(key) or []
+            match = matches[occurrence] if occurrence < len(matches) else (matches[0] if matches else None)
+
+        if match is None:
+            missing.append(requested)
+            continue
+
+        ordered.append(match)
+
+    return ordered, missing
 
 
 def _local_playlist_song_events(playlist_id: int, account_id: int):
@@ -942,6 +1015,120 @@ def stream_playlist(
         media_type="application/x-ndjson",
         headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
     )
+
+
+@api.post("/playlists/{user_id}/{playlist_id}/queue")
+def get_playlist_queue_songs(
+    user_id: str,
+    playlist_id: str,
+    payload: dict | None = Body(None),
+    auth=Depends(verify_auth),
+    x_account_token: str = Header(..., alias="X-Account-Token"),
+):
+    if not auth or not x_account_token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    token_user_id = get_token_user(x_account_token)
+    if not token_user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    resolved_user_id = _resolve_user_id(user_id, token_user_id)
+    user = get_account_summary(resolved_user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    raw_playlist_id, service = _split_playlist_id(playlist_id)
+    payload = payload or {}
+    requested_songs = payload.get("songs") if isinstance(payload, dict) else None
+    if not isinstance(requested_songs, list):
+        requested_songs = []
+    requested_songs = [
+        song for song in requested_songs
+        if isinstance(song, dict) and (song.get("song_id") or song.get("songId")) and (song.get("source_type") or song.get("sourceType"))
+    ]
+    if not requested_songs:
+        return {"playlist": None, "songs": [], "complete": True}
+
+    if service == "local":
+        try:
+            local_id = int(raw_playlist_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid playlist ID")
+        playlist = _db.fetch_one("playlists", where={"id": local_id, "owner_id": resolved_user_id})
+        if not playlist or (playlist.get("private") and token_user_id != resolved_user_id):
+            raise HTTPException(status_code=404, detail="Playlist not found")
+        playlist["service"] = "local"
+
+        playlist_songs = []
+        for event in _local_playlist_song_events(local_id, resolved_user_id):
+            try:
+                decoded = json.loads(event.decode("utf-8"))
+            except (ValueError, AttributeError):
+                continue
+            if decoded.get("type") == "song" and isinstance(decoded.get("song"), dict):
+                playlist_songs.append(decoded["song"])
+
+        ordered, missing = _ordered_requested_playlist_songs(requested_songs, playlist_songs)
+        return {
+            "playlist": playlist,
+            "songs": ordered,
+            "complete": len(missing) == 0,
+        }
+
+    cached_playlist = _read_json(_cache_path(resolved_user_id, service, raw_playlist_id, detail=True))
+    if cached_playlist and cached_playlist.get("private") and token_user_id != resolved_user_id:
+        raise HTTPException(status_code=404, detail="Playlist not found")
+
+    if service == "spotify":
+        playlist = get_spotify_playlist(raw_playlist_id, resolved_user_id)
+    elif service == "soundcloud":
+        playlist = get_soundcloud_playlist(raw_playlist_id, resolved_user_id)
+    else:
+        playlist = get_youtube_playlist(raw_playlist_id, resolved_user_id)
+
+    if not playlist or (playlist.get("private") and token_user_id != resolved_user_id):
+        raise HTTPException(status_code=404, detail="Playlist not found")
+
+    cached_song_data = _read_song_cache(resolved_user_id, service, raw_playlist_id)
+    cached_songs = cached_song_data.get("songs") if cached_song_data else []
+    ordered, missing = _ordered_requested_playlist_songs(requested_songs, cached_songs)
+
+    if missing:
+        provider_key = {
+            "spotify": "spotify@built-in",
+            "soundcloud": "soundcloud@built-in",
+            "youtube": "youtube@built-in",
+        }[service]
+        if not has_function(provider_key, "iter_playlist_songs"):
+            return {"playlist": playlist, "songs": ordered, "complete": False}
+
+        try:
+            if service == "spotify":
+                live_source = spotify_service.song_iterator(raw_playlist_id, resolved_user_id, token_user_id, user, _config)
+            elif service == "soundcloud":
+                live_source = soundcloud_service.song_iterator(raw_playlist_id, resolved_user_id, token_user_id, user, _config)
+            else:
+                live_source = youtube_service.song_iterator(raw_playlist_id, resolved_user_id, token_user_id, user, _config)
+
+            live_songs = []
+            exhausted = True
+            for live_song in live_source:
+                live_songs.append(live_song)
+                ordered, missing = _ordered_requested_playlist_songs(requested_songs, live_songs)
+                if not missing:
+                    exhausted = False
+                    break
+
+            if exhausted:
+                _write_song_cache(resolved_user_id, service, raw_playlist_id, live_songs, complete=True)
+                ordered, missing = _ordered_requested_playlist_songs(requested_songs, live_songs)
+        except Exception as error:
+            log(f"{service.title()} ordered queue lookup failed: {error}", "error")
+
+    return {
+        "playlist": playlist,
+        "songs": ordered,
+        "complete": len(missing) == 0,
+    }
     
 @api.get("/playlists/{user_id}/{playlist_id}")
 def get_playlist(user_id: int, playlist_id: str, auth=Depends(verify_auth), x_account_token: str = Header(..., alias="X-Account-Token")):

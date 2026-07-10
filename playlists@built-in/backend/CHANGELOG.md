@@ -4,6 +4,17 @@ All notable changes to `playlists@built-in` are documented here. This changelog 
 
 ## [Unreleased]
 
+## [beta-1.4.0] - 2026-07-10
+
+### Added
+
+- Backend: Added an ordered playlist queue lookup endpoint so queue views can request only the visible songs in the current playback order.
+- Frontend: Playlist queue items now include playlist name and position metadata so queue plugins can label and match playlist-backed songs more reliably.
+
+### Changed
+
+- Frontend: Queue consumers can reuse playlist-backed queue metadata without re-streaming entire playlists when the current queue order is already known locally.
+
 ## [beta-1.3.1] - 2026-07-08
 
 ### Fixed

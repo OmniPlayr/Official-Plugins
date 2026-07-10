@@ -2,6 +2,7 @@
     height: 100%;
     display: grid;
     place-items: center;
+    width: 100%;
 }
 
 .playlist-loading svg {
@@ -20,6 +21,7 @@
     padding: 20px;
     position: relative;
     min-height: 100%;
+    width: 100%;
 }
 
 .playlist-page-header {

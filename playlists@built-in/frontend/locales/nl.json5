@@ -34,6 +34,7 @@
     "playlists.playlist.songs.table.date-added": "Toegevoegd op",
 
     "playlists.playlist.context.queue": "Toevoegen aan wachtrij",
+    "playlists.playlist.context.open-queue": "Open wachtrij",
     "playlists.playlist.context.share": "Delen",
     "playlists.playlist.context.copy-link": "Link kopiëren",
     "playlists.playlist.context.copy-embed": "Embed kopiëren",
