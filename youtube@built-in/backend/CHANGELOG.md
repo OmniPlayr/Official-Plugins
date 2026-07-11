@@ -4,6 +4,12 @@ All notable changes to `youtube@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-07-11
+
+### Fixed
+
+- Switched authenticated YouTube Music playlist listing to `YTMusic.get_library_playlists()` so account playlists no longer fail with HTTP 400 when a YouTube channel ID is rejected by YouTube Music's user playlist endpoint.
+
 ## [1.0.2] - 2026-07-11
 
 ### Fixed

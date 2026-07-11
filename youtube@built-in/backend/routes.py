@@ -520,27 +520,12 @@ def get_playlists(
     if not client:
         return None
     connected_user = _connected_user_from_api(user_id, timeout_seconds)
-    channel_id = connected_user.get("id")
-    if not channel_id:
-        log(
-            f"YouTube Music playlist request failed for account {user_id}: "
-            "YouTube channel ID is unavailable; verify that YouTube Data API v3 is enabled",
-            "warning",
-        )
-        return None
-
-    log(f"YouTube Music requesting user playlists for account {user_id}", "debug")
+    log(f"YouTube Music requesting library playlists for account {user_id}", "debug")
     try:
-        user = client.get_user(channel_id)
-        playlist_section = user.get("playlists") or {} if isinstance(user, dict) else {}
-        params = playlist_section.get("params")
-        if params:
-            collected = client.get_user_playlists(channel_id, params)
-        else:
-            collected = playlist_section.get("results") or []
+        collected = client.get_library_playlists(limit=None)
     except Exception as error:
         log(
-            f"YouTube Music user playlist request failed for account {user_id}: "
+            f"YouTube Music library playlist request failed for account {user_id}: "
             f"{type(error).__name__}: {error}",
             "warning",
         )
@@ -556,7 +541,7 @@ def get_playlists(
             playlist["author"] = connected_user
         playlists.append(playlist)
 
-    log(f"YouTube Music user playlist request returned {len(playlists)} playlists for account {user_id}", "debug")
+    log(f"YouTube Music library playlist request returned {len(playlists)} playlists for account {user_id}", "debug")
     row = _get_row(user_id)
     _sync_oauth_file_to_db(user_id, _oauth_file_path(user_id) if row else None)
 
