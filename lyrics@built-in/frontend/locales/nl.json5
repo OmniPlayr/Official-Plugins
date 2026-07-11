@@ -1,0 +1,14 @@
+{
+    "lyrics.loading": "Songteksten laden",
+    "lyrics.instrumental": "Instrumentaal stuk",
+
+    "lyrics.provider.prefix": "Songteksten geleverd door",
+    "lyrics.provider.name": "lrclib",
+
+    "lyrics.not_found.1": "Deze songtekst verstopt zich backstage",
+    "lyrics.not_found.2": "Geen songtekst hier, alleen vibes",
+    "lyrics.not_found.3": "De woorden hebben hun cue gemist",
+    "lyrics.not_found.4": "Deze track houdt zijn songtekst geheim",
+
+    "lyrics.sync": "Synchroniseren",
+}

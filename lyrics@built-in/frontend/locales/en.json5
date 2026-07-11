@@ -1,0 +1,14 @@
+{
+    "lyrics.loading": "Loading lyrics",
+    "lyrics.instrumental": "Instrumental break",
+
+    "lyrics.provider.prefix": "Lyrics provided by",
+    "lyrics.provider.name": "lrclib",
+
+    "lyrics.not_found.1": "These lyrics are hiding backstage",
+    "lyrics.not_found.2": "No lyrics here, just vibes",
+    "lyrics.not_found.3": "The words missed their cue",
+    "lyrics.not_found.4": "This track is keeping its lyrics secret",
+
+    "lyrics.sync": "Sync",
+}
