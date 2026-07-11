@@ -4,6 +4,12 @@ All notable changes to `queued@built-in` are documented here. This changelog fol
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-11
+
+### Changed
+
+- Changed the required min dev version to 2026.7.22.
+
 ## [1.0.0] - 2026-07-11
 
 ### Added

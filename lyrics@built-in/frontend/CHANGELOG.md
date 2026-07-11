@@ -4,6 +4,12 @@ All notable changes to `lyrics@built-in` are documented here. This changelog fol
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-11
+
+### Fixed
+
+- Fixed the mobile layout for the lyrics, so it now shows under the fullscreen player.
+
 ## [1.0.0] - 2026-07-11
 
 ### Added

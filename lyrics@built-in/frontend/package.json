@@ -2,7 +2,7 @@
     "id": "lyrics@built-in",
     "name": "lyrics",
     "author": "built-in",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "View lyrics for the currently playing song.",
     "type": "frontend",
     "repository": "https://github.com/OmniPlayr/Official-Plugins",
@@ -15,5 +15,5 @@
     "contributors": [
         { "name": "wokki20", "avatar": "https://avatars.githubusercontent.com/u/105733478?v=4", "profile": "https://github.com/levkris" }
     ],
-    "min-dev-version": "2026.7.19"
+    "min-dev-version": "2026.7.22"
 }
