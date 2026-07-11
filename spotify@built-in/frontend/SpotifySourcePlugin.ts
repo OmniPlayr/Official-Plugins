@@ -1,4 +1,5 @@
 import {
+    api,
     getVolumeStorage,
     type SourcePlugin,
     type TrackMetadata
@@ -8,6 +9,12 @@ import type { SpotifyState } from './sdk';
 
 const VOLUME_STORAGE_KEY = 'player_volume';
 const SPOTIFY_STATE_TIMEOUT_MS = 12000;
+
+type PlaybackCallbacks = {
+    onMetadata: (meta: TrackMetadata) => void;
+    onReady: () => void;
+    onStateChange: () => void;
+};
 
 function timeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -27,23 +34,40 @@ function waitForSpotifyTrackState(
 ): Promise<void> {
     return new Promise<void>((resolve, reject) => {
         let unsub: (() => void) | null = null;
+        let settled = false;
 
-        const timer = setTimeout(() => {
-            unsub?.();
-            reject(new Error('Timed out waiting for Spotify playback state'));
-        }, SPOTIFY_STATE_TIMEOUT_MS);
-
-        unsub = onStateChange(state => {
-            if (!state) return;
+        const finish = (state: SpotifyState) => {
+            if (settled) return;
 
             const track = state.track_window?.current_track;
             if (track?.id !== songId) return;
 
+            settled = true;
             clearTimeout(timer);
-            onReadyState(state);
+            clearInterval(pollTimer);
             unsub?.();
+            onReadyState(state);
             resolve();
+        };
+
+        const timer = setTimeout(() => {
+            settled = true;
+            clearInterval(pollTimer);
+            unsub?.();
+            reject(new Error('Timed out waiting for Spotify playback state'));
+        }, SPOTIFY_STATE_TIMEOUT_MS);
+
+        const pollTimer = setInterval(() => {
+            const state = getState();
+            if (state) finish(state);
+        }, 250);
+
+        unsub = onStateChange(state => {
+            if (state) finish(state);
         });
+
+        const currentState = getState();
+        if (currentState) finish(currentState);
     });
 }
 
@@ -57,6 +81,8 @@ export default class SpotifySourcePlugin implements SourcePlugin {
     private _isPlaying = false;
     private _volume = 1;
     private transientVolumeActive = false;
+    private pendingSongId: string | null = null;
+    private playbackCallbacks: PlaybackCallbacks | null = null;
 
     constructor() {
         const storage = getVolumeStorage();
@@ -84,14 +110,24 @@ export default class SpotifySourcePlugin implements SourcePlugin {
         songId: string,
         _extra: Record<string, unknown> | undefined,
         autoplay: boolean,
-        callbacks: {
-            onMetadata: (meta: TrackMetadata) => void;
-            onReady: () => void;
-            onStateChange: () => void;
-        }
+        callbacks: PlaybackCallbacks
     ) {
         this.unsubscribe?.();
         this.stopTicker();
+        this.playbackCallbacks = callbacks;
+
+        if (!autoplay) {
+            const encoded = encodeURIComponent(songId);
+            const result = await api(`/player/media/spotify:${encoded}`) as { metadata: TrackMetadata };
+            this.pendingSongId = songId;
+            this._isPlaying = false;
+            callbacks.onMetadata(result.metadata);
+            callbacks.onReady();
+            callbacks.onStateChange();
+            return;
+        }
+
+        this.pendingSongId = null;
 
         try {
             await timeout(
@@ -110,9 +146,7 @@ export default class SpotifySourcePlugin implements SourcePlugin {
             throw error;
         }
 
-        if (!autoplay) await sdkPause();
-
-        await waitForSpotifyTrackState(songId, state => {
+        const applyReadyState = (state: SpotifyState) => {
             const track = state.track_window?.current_track;
             if (!track) return;
 
@@ -128,7 +162,27 @@ export default class SpotifySourcePlugin implements SourcePlugin {
             });
 
             callbacks.onReady();
-        });
+        };
+
+        try {
+            await waitForSpotifyTrackState(songId, applyReadyState);
+        } catch (error) {
+            if (!(error instanceof Error) || error.message !== 'Timed out waiting for Spotify playback state') {
+                throw error;
+            }
+
+            await timeout(
+                sdkWaitReady(),
+                SPOTIFY_STATE_TIMEOUT_MS,
+                'Timed out waiting for Spotify Web Playback SDK to reconnect'
+            );
+            await timeout(
+                sdkPlay(songId),
+                SPOTIFY_STATE_TIMEOUT_MS,
+                'Timed out retrying Spotify playback'
+            );
+            await waitForSpotifyTrackState(songId, applyReadyState);
+        }
 
         await sdkSetVolume(this._volume);
 
@@ -150,7 +204,16 @@ export default class SpotifySourcePlugin implements SourcePlugin {
     }
 
     pause() { sdkPause().catch(error => console.warn('[spotify@built-in] Failed to pause Spotify playback.', error)); }
-    resume() { sdkResume().catch(error => console.warn('[spotify@built-in] Failed to resume Spotify playback.', error)); }
+    resume() {
+        if (this.pendingSongId && this.playbackCallbacks) {
+            const songId = this.pendingSongId;
+            this.pendingSongId = null;
+            this.play(songId, undefined, true, this.playbackCallbacks)
+                .catch(error => console.warn('[spotify@built-in] Failed to start restored Spotify playback.', error));
+            return;
+        }
+        sdkResume().catch(error => console.warn('[spotify@built-in] Failed to resume Spotify playback.', error));
+    }
     activate() { sdkActivateElement()?.catch(error => console.warn('[spotify@built-in] Failed to activate Spotify player.', error)); }
     seek(seconds: number) { sdkSeek(seconds * 1000).catch(error => console.warn('[spotify@built-in] Failed to seek Spotify playback.', error)); }
 
@@ -188,6 +251,7 @@ export default class SpotifySourcePlugin implements SourcePlugin {
     destroy() {
         this.unsubscribe?.();
         this.stopTicker();
+        this.pendingSongId = null;
         sdkPause().catch(error => console.warn('[spotify@built-in] Failed to pause Spotify playback during cleanup.', error));
     }
 }

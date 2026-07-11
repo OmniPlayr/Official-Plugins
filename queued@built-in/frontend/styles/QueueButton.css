@@ -1,0 +1,42 @@
+.sidetab-button-plugin-root {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sidetab-button-slot {
+    display: flex;
+    align-items: center;
+}
+
+.queue-button {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    border-radius: 0;
+    cursor: pointer;
+    transition: color 0.2s ease-in-out;
+    color: var(--clr-text-a30);
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.queue-button-icon {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.queue-button:hover {
+    background: transparent;
+    border: 0;
+    color: var(--clr-text-a0);
+}
+
+.queue-button.active {
+    color: var(--clr-primary-a0);
+}

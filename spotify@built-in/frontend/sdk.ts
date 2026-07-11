@@ -328,6 +328,7 @@ export async function loadSdk(): Promise<boolean> {
             deviceId = null;
             notifyState(null);
             resetReady();
+            scheduleReconnect();
         });
 
         sdkPlayer.addListener('initialization_error', ({ message }: { message: string }) => {

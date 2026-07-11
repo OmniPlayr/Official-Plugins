@@ -1,0 +1,9 @@
+{
+    "queue.current": "Huidig nummer",
+    "queue.now-playing": "Nu aan het spelen",
+    "queue.queue": "Wachtrij",
+    "queue.next-up": "Hierna",
+    "queue.next-from": "Hierna uit: {{playlist}}",
+    "queue.loading": "Laden...",
+    "queue.load-more": "Meer laden",
+}

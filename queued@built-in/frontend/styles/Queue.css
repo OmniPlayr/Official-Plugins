@@ -1,0 +1,307 @@
+.queue-plugin-root {
+    height: 100%;
+}
+
+.queue-view-container {
+    width: 300px;
+    min-width: 300px;
+    height: 100%;
+    background-color: var(--clr-popup-a0);
+    padding: var(--pd-dash-component);
+    border-radius: var(--br-dash-component);
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--clr-popup-a30);
+    margin-left: 10px;
+    max-height: 100%;
+    overflow: auto;
+    gap: 20px;
+    position: relative;
+    flex: 0 0 auto;
+    opacity: 1;
+    transition:
+        width 220ms ease-in-out,
+        min-width 220ms ease-in-out,
+        padding 220ms ease-in-out,
+        margin-left 220ms ease-in-out,
+        border-color 220ms ease-in-out,
+        opacity 160ms ease-in-out;
+    will-change: width;
+}
+
+.queue-view-container-hidden {
+    min-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    margin-left: 0;
+    border-color: transparent;
+    opacity: 0;
+    pointer-events: none;
+    gap: 0;
+}
+
+.queue-view-container-popup {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    height: auto;
+    max-height: min(72dvh, 640px);
+    margin-left: 0;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+}
+
+.queue-view-resize-handle {
+    position: absolute;
+    inset: 0 auto 0 -14px;
+    width: 22px;
+    cursor: ew-resize;
+    touch-action: none;
+    z-index: 2;
+}
+
+.queue-view-resize-handle::after {
+    content: "";
+    position: absolute;
+    top: 12px;
+    bottom: 12px;
+    left: 12px;
+    width: 2px;
+    border-radius: 999px;
+    background-color: transparent;
+    transition: background-color 140ms ease;
+}
+
+.queue-view-resize-handle:hover::after,
+.queue-view-resizing .queue-view-resize-handle::after {
+    background-color: var(--clr-primary-a0);
+}
+
+.queue-view-resizing,
+.queue-view-resizing * {
+    cursor: ew-resize !important;
+    user-select: none !important;
+}
+
+.queue-view-resizing .queue-view-container {
+    transition: none;
+    border-left-color: var(--clr-primary-a0);
+}
+
+.sidetab-switching .queue-view-container {
+    transition: none;
+}
+
+@layer plugin {
+    .dashboard-hor > :not(.__plugin-hook-wrapper):not([data-plugin-hooked]) {
+        display: revert-layer !important;
+    }
+}
+
+.queue-view {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.queue-view-title {
+    color: var(--clr-text-a30);
+    font-weight: 600;
+    font-size: 16px;
+    margin: 0;
+}
+
+.queue-songs {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 0;
+}
+
+.queue-song-item {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition:
+        background-color 140ms ease,
+        opacity 140ms ease,
+        transform 180ms ease;
+    animation: queue-song-slide-in 180ms ease both;
+}
+
+.queue-song-item:hover {
+    background-color: var(--clr-popup-a10);
+}
+
+.queue-song-item.dragging,
+.queue-song-item.dragging:active {
+    cursor: grabbing;
+}
+
+.queue-song-item.dragging {
+    opacity: 0.45;
+    transform: scale(0.98);
+}
+
+.queue-song-item.drop-before::before,
+.queue-song-item.drop-after::after {
+    content: "";
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    height: 2px;
+    border-radius: 999px;
+    background-color: var(--clr-primary-a0);
+    pointer-events: none;
+}
+
+.queue-song-item.drop-before::before {
+    top: -4px;
+}
+
+.queue-song-item.drop-after::after {
+    bottom: -4px;
+}
+
+.queue-song-play {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    width: 24px;
+    height: 24px;
+    border: 0;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    color: var(--clr-text-a0);
+    background-color: color-mix(in srgb, var(--clr-popup-a0) 72%, transparent);
+    opacity: 0;
+    transform: translateY(-50%) scale(0.92);
+    transition:
+        opacity 140ms ease,
+        transform 140ms ease,
+        background-color 140ms ease;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.queue-song-item:hover .queue-song-play,
+.queue-song-play:focus-visible {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+}
+
+.queue-song-play:hover {
+    background-color: var(--clr-primary-a0);
+}
+
+.queue-song-play-icon {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+}
+
+.queue-song-cover {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    border-radius: 6px;
+    object-fit: cover;
+    background-color: var(--clr-surface-a20);
+}
+
+.queue-song-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.queue-song-title,
+.queue-song-artist {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.queue-song-title {
+    color: var(--clr-text-a0);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.queue-song-artist {
+    color: var(--clr-text-a30);
+    font-size: 14px;
+}
+
+.queue-now-playing .queue-song-title {
+    color: var(--clr-primary-a0);
+}
+
+.queue-load-more-status,
+.queue-load-more-button {
+    align-self: stretch;
+}
+
+.queue-load-more-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--clr-text-a30);
+    font-size: 14px;
+    padding: 8px 0;
+}
+
+.queue-load-more-spinner {
+    width: 16px;
+    height: 16px;
+    color: var(--clr-primary-a0);
+    animation: queue-load-more-spin 700ms linear infinite;
+}
+
+.queue-load-more-button {
+    background-color: transparent;
+    border-color: var(--clr-popup-a30);
+    color: var(--clr-text-a0);
+    padding: 8px 10px;
+}
+
+.queue-load-more-button:hover {
+    background-color: var(--clr-popup-a10);
+    border-color: var(--clr-primary-a0);
+    color: var(--clr-text-a0);
+}
+
+@media (max-width: 768px) {
+    .queue-view-container {
+        max-width: none;
+    }
+}
+
+@keyframes queue-song-slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes queue-load-more-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

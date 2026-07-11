@@ -3,6 +3,7 @@ import translations from ".";
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Check, ChevronLeft, ChevronRight, Clock, Code2, Copy, Disc3, List, ListPlus, LoaderCircle, Pause, Play, Search, Share2, Shuffle, User, Volume2 } from "lucide-react";
 import { Tooltip } from "react-tooltip";
+import { createPortal } from "react-dom";
 import './styles/Playlist.css';
 import liked from './assets/liked.svg';
 import unknownArt from '../../assets/images/unknown-art.svg';
@@ -1076,17 +1077,18 @@ function Playlist() {
                             })
                         }
 
-                        {songContextMenu && (
-                            <PlaylistSongContextMenu
-                                key={`${songContextMenu.song.source_type}:${songContextMenu.song.song_id}:${songContextMenu.x}:${songContextMenu.y}`}
-                                menu={songContextMenu}
-                                copiedContextAction={copiedContextAction}
-                                addSongToQueue={addSongToQueue}
-                                copyContextValue={copyContextValue}
-                            />
-                        )}
                     </tbody>
                 </table>
+                {songContextMenu && createPortal(
+                    <PlaylistSongContextMenu
+                        key={`${songContextMenu.song.source_type}:${songContextMenu.song.song_id}:${songContextMenu.x}:${songContextMenu.y}`}
+                        menu={songContextMenu}
+                        copiedContextAction={copiedContextAction}
+                        addSongToQueue={addSongToQueue}
+                        copyContextValue={copyContextValue}
+                    />,
+                    document.body
+                )}
             </div>
         </div>
     );

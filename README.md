@@ -37,7 +37,7 @@ Supports `.mp3`, `.flac`, `.wav`, `.ogg`, `.m4a`, `.aac`, and `.opus`. Reads ful
 ### [`spotify@built-in`](./spotify@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend 2.2.1 / Frontend 2.2.1
+**Version:** Backend 2.2.1 / Frontend 2.2.3
 
 Stream Spotify directly inside OmniPlayr. Connect your Spotify account once and OmniPlayr registers itself as a native Spotify playback device. Audio plays through the official Web Playback SDK, metadata is fetched via the Spotify Web API, and tokens are refreshed automatically in the background.
 
@@ -76,13 +76,39 @@ Requires a Google Cloud OAuth client configured for TVs and limited-input device
 ### [`playlists@built-in`](./playlists@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend beta-1.3.1 / Frontend beta-1.3.1
+**Version:** Backend beta-1.3.1 / Frontend beta-1.4.1
 
 Create, browse, and stream playlists inside OmniPlayr. The plugin manages local OmniPlayr playlists, automatically creates a private Liked Songs playlist for each user, and includes collaborator metadata for local playlists.
 
 When `spotify@built-in`, `soundcloud@built-in`, or `youtube@built-in` is installed and connected, external playlists can appear beside local playlists. Playlist collections and individual playlist songs can be streamed incrementally, with disk caching for external summaries, details, and song lists.
 
 [Read more →](./playlists@built-in/backend/README.md)
+
+---
+
+### [`lyrics@built-in`](./lyrics@built-in/frontend/)
+
+**Type:** Frontend  
+**Version:** 1.0.0
+
+View synced or plain lyrics for the currently playing song inside a resizable OmniPlayr side tab. The plugin adds a lyrics button to the player, fetches lyrics from [LRCLIB](https://lrclib.net/), follows the current synced lyric line during playback, and lets users seek by selecting a synced line.
+
+It works with any source that exposes enough track metadata for lookup, and it shares side-tab state with other compatible plugins.
+
+[Read more](./lyrics@built-in/frontend/README.md)
+
+---
+
+### [`queued@built-in`](./queued@built-in/frontend/)
+
+**Type:** Frontend  
+**Version:** 1.0.0
+
+View and manage the OmniPlayr queue from a resizable side tab. The plugin shows the current song, manually queued songs, and next-up songs, supports playing visible queue items, drag-and-drop reordering, incremental loading, and a mobile popup entry point.
+
+When `playlists@built-in` is installed, playlist-backed queues can display richer metadata and playlist names.
+
+[Read more](./queued@built-in/frontend/README.md)
 
 ---
 

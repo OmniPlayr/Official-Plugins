@@ -1,0 +1,9 @@
+{
+    "queue.current": "Current playing song",
+    "queue.now-playing": "Now Playing",
+    "queue.queue": "Queue",
+    "queue.next-up": "Next up",
+    "queue.next-from": "Next from: {{playlist}}",
+    "queue.loading": "Loading...",
+    "queue.load-more": "Load more",
+}

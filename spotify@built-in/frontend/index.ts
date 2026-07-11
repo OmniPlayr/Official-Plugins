@@ -28,25 +28,25 @@ function mountSetupPopup() {
 }
 
 
-export function init() {
-    getStatus().then(s => {
-        if (s.connected) {
-            loadSdk();
-            player.registerPlugin('spotify', new SpotifySourcePlugin());
-            registerPluginsMenuItem('spotify@built-in', {
-                icon: LogOut,
-                label: translations.t('setup.button.logout'),
-                function: () => {
-                    disconnect().then(() => location.reload());
-                },
-            });
-        } else {
-            registerPluginsMenuItem('spotify@built-in', {
-                icon: LogIn,
-                label: translations.t('setup.button.login'),
-                function: mountSetupPopup,
-                needsInteraction: true,
-            });
-        }
-    });
+export async function init() {
+    const status = await getStatus();
+
+    if (status.connected) {
+        loadSdk();
+        player.registerPlugin('spotify', new SpotifySourcePlugin());
+        registerPluginsMenuItem('spotify@built-in', {
+            icon: LogOut,
+            label: translations.t('setup.button.logout'),
+            function: () => {
+                disconnect().then(() => location.reload());
+            },
+        });
+    } else {
+        registerPluginsMenuItem('spotify@built-in', {
+            icon: LogIn,
+            label: translations.t('setup.button.login'),
+            function: mountSetupPopup,
+            needsInteraction: true,
+        });
+    }
 }
