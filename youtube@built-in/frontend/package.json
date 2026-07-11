@@ -2,7 +2,7 @@
     "id": "youtube@built-in",
     "name": "youtube",
     "author": "built-in",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Listen to songs from youtube music with OmniPlayr by using the youtube@built-in plugin as a source.",
     "type": "frontend",
     "min-dev-version": "2026.7.6"

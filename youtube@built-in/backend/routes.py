@@ -750,17 +750,26 @@ def auth_poll(body: DevicePollRequest, auth=Depends(verify_auth)):
 
     data = response.json()
     expiry = int(time.time() * 1000) + int(data.get("expires_in", 3600)) * 1000
+    token_data = {
+        "access_token": data["access_token"],
+        "refresh_token": data.get("refresh_token"),
+        "token_expiry": expiry,
+        "youtube_user_id": None,
+        "youtube_user_name": None,
+        "youtube_user_avatar": None,
+    }
     _db.update(
         "youtube_accounts",
-        data={
-            "access_token": data["access_token"],
-            "refresh_token": data.get("refresh_token"),
-            "token_expiry": expiry,
-            "youtube_user_id": None,
-            "youtube_user_name": None,
-            "youtube_user_avatar": None,
-        },
+        data=token_data,
         where={"account_id": entry["account_id"]},
+    )
+    _write_oauth_file(
+        entry["account_id"],
+        {
+            **token_data,
+            "client_id": entry["client_id"],
+            "client_secret": entry["client_secret"],
+        },
     )
     _device_flow_store.pop(body.flow_id, None)
     with _ytmusic_cache_lock:

@@ -63,7 +63,7 @@ Public URL playback does not require Pro or app credentials. Connected account f
 ### [`youtube@built-in`](./youtube@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)
-**Version:** Backend 1.0.1 / Frontend 1.0.1
+**Version:** Backend 1.0.2 / Frontend 1.0.2
 
 Stream YouTube Music tracks inside OmniPlayr and connect a Google account to surface YouTube Music playlists. Audio streams are resolved with `yt-dlp`, metadata and playlist data come from `ytmusicapi`, and setup uses Google's TV and limited-input device OAuth flow.
 

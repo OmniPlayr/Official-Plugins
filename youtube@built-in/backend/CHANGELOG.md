@@ -4,6 +4,12 @@ All notable changes to `youtube@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-07-11
+
+### Fixed
+
+- Wrote the per-account `ytmusicapi` OAuth JSON file immediately after Google device login succeeds instead of waiting for the first YouTube Music client call or token refresh.
+
 ## [1.0.1] - 2026-07-10
 
 ### Fixed
