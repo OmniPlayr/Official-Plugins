@@ -127,11 +127,12 @@ def get_stream_url(song_id: str, audio_quality: str = _DEFAULT_AUDIO_QUALITY):
             _cache_put(cache_key, error=message)
             raise StreamUnavailableError(message)
 
+        http_headers = info.get("http_headers", {})
         result = {
             "url": info["url"],
-            "http_headers": info.get("http_headers", {}),
-            "mime_type": info.get("mime_type") or _mime_from_ext(info.get("ext")),
-            "file_size": info.get("filesize") or info.get("filesize_approx"),
+            "http_headers": http_headers,
+            "mime_type": _mime_from_ext(info.get("ext")) or info.get("mime_type"),
+            "file_size": info.get("filesize") or _exact_file_size(info["url"], http_headers),
         }
         _cache_put(cache_key, data=result)
         log(
@@ -145,12 +146,40 @@ def get_stream_url(song_id: str, audio_quality: str = _DEFAULT_AUDIO_QUALITY):
 def _mime_from_ext(ext: str | None) -> str | None:
     if ext == "m4a":
         return "audio/mp4"
+    if ext == "mp4":
+        return "audio/mp4"
     if ext == "webm":
         return "audio/webm"
     if ext == "mp3":
         return "audio/mpeg"
     if ext == "opus":
         return "audio/ogg"
+    return None
+
+
+def _exact_file_size(url: str, headers: dict) -> int | None:
+    try:
+        response = requests.get(
+            url,
+            headers={**headers, "Range": "bytes=0-0"},
+            allow_redirects=True,
+            stream=True,
+            timeout=(10, 15),
+        )
+        with response:
+            if response.status_code == 206:
+                content_range = response.headers.get("Content-Range", "")
+                match = re.search(r"/(\d+)\s*$", content_range)
+                if match:
+                    return int(match.group(1))
+
+            if response.status_code == 200:
+                content_length = response.headers.get("Content-Length")
+                if content_length and content_length.isdigit():
+                    return int(content_length)
+    except requests.RequestException as error:
+        log(f"Could not determine exact YouTube stream size: {error}", "debug")
+
     return None
 
 
@@ -168,37 +197,49 @@ def get_file_size(song_id: str, audio_quality: str = _DEFAULT_AUDIO_QUALITY):
         return None
 
 
-def get_stream(song_id: str, audio_quality: str = _DEFAULT_AUDIO_QUALITY, range_header: str | None = None):
+def _open_stream_response(song_id: str, audio_quality: str, range_header: str | None):
     for attempt in range(2):
         try:
             stream_info = get_stream_url(song_id, audio_quality)
         except StreamUnavailableError:
-            return
+            raise
 
         headers = stream_info["http_headers"].copy()
         if range_header:
             headers["Range"] = range_header
 
         try:
-            with requests.get(
+            response = requests.get(
                 stream_info["url"],
                 headers=headers,
                 allow_redirects=True,
                 stream=True,
                 timeout=(10, 30),
-            ) as response:
-                response.raise_for_status()
-                for chunk in response.iter_content(chunk_size=_STREAM_CHUNK_SIZE):
-                    if chunk:
-                        yield chunk
-                return
+            )
+            response.raise_for_status()
+            return response
         except requests.HTTPError as error:
+            if error.response is not None:
+                error.response.close()
             if attempt == 0 and error.response is not None and error.response.status_code in {401, 403, 404, 410}:
                 _invalidate_stream_url(song_id, audio_quality)
                 log(f"Refreshing expired YouTube stream URL for song_id={song_id}", "debug")
                 continue
             log(f"YouTube stream request failed for song_id={song_id}: {error}", "warning")
-            return
+            raise StreamUnavailableError(str(error)) from error
         except requests.RequestException as error:
             log(f"YouTube stream request failed for song_id={song_id}: {error}", "warning")
-            return
+            raise StreamUnavailableError(str(error)) from error
+
+    raise StreamUnavailableError("YouTube stream request failed")
+
+
+def _response_chunks(response):
+    with response:
+        for chunk in response.iter_content(chunk_size=_STREAM_CHUNK_SIZE):
+            if chunk:
+                yield chunk
+
+
+def get_stream(song_id: str, audio_quality: str = _DEFAULT_AUDIO_QUALITY, range_header: str | None = None):
+    return _response_chunks(_open_stream_response(song_id, audio_quality, range_header))

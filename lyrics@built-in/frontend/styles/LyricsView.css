@@ -1,5 +1,14 @@
 .lyrics-plugin-root {
     height: 100%;
+    min-width: 0;
+    flex: 0 0 auto;
+}
+
+.lyrics-plugin-root:has(> .lyrics-sidetab-container-collapsed) {
+    width: 0;
+    flex-basis: 0;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .lyrics-mobile-plugin-root {
@@ -15,7 +24,7 @@
     --lyrics-text-a20: var(--clr-text-a20);
     --lyrics-text-a30: var(--clr-text-a30);
     --lyrics-text-a40: var(--clr-text-a40);
-    width: 300px;
+    width: var(--lyrics-sidetab-width, 300px);
     min-width: 300px;
     height: 100%;
     background-color: var(--clr-popup-a0);
@@ -38,8 +47,7 @@
         padding 220ms ease-in-out,
         margin-left 220ms ease-in-out,
         border-color 220ms ease-in-out,
-        background-color 300ms ease-in-out,
-        opacity 160ms ease-in-out;
+        background-color 300ms ease-in-out;
     will-change: width;
     overflow: hidden;
 }
@@ -58,10 +66,12 @@
     padding-left: 0;
     padding-right: 0;
     margin-left: 0;
-    border-color: transparent;
-    opacity: 0;
     pointer-events: none;
     gap: 0;
+}
+
+.lyrics-sidetab-container-closing {
+    pointer-events: none;
 }
 
 .lyrics-sidetab-resize-handle {
@@ -101,6 +111,7 @@
     border-left-color: var(--clr-primary-a0);
 }
 
+.lyrics-sidetab-container-switching,
 .sidetab-switching .lyrics-sidetab-container {
     transition: none;
 }

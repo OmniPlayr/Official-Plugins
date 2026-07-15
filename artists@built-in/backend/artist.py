@@ -1,6 +1,7 @@
 import requests
 import time
 import json
+import re
 from pathlib import Path
 from omniplayr.plugins import get_plugin_config
 
@@ -48,7 +49,7 @@ def _get(url, params=None, headers=None, retries=3, **kwargs):
 
 
 def cache_path(artist_name):
-    safe = artist_name.lower().replace(" ", "_")
+    safe = re.sub(r"[^a-z0-9_-]+", "_", artist_name.lower()).strip("_") or "unknown"
     return CACHE_DIR / f"{safe}.json"
 
 
@@ -66,14 +67,43 @@ def save_cache(artist_name, data):
 def _fetch_full_artist_mb(artist_id):
     r = _get(
         f"{MUSICBRAINZ_BASE}/artist/{artist_id}",
-        params={"fmt": "json", "inc": "tags"},
+        params={"fmt": "json", "inc": "tags+aliases"},
         headers=HEADERS_MB,
     )
     return r.json()
 
 
+def _normalize_name(value):
+    return re.sub(r"[^a-z0-9]+", " ", (value or "").lower()).strip()
+
+
 def _name_matches(candidate, target):
-    return candidate.lower().strip() == target.lower().strip()
+    return _normalize_name(candidate) == _normalize_name(target)
+
+
+def _artist_matches(artist, target):
+    if not isinstance(artist, dict):
+        return False
+
+    names = [
+        artist.get("name"),
+        artist.get("sort-name"),
+        artist.get("disambiguation"),
+    ]
+    for alias in artist.get("aliases", []) or []:
+        if isinstance(alias, dict):
+            names.append(alias.get("name"))
+            names.append(alias.get("sort-name"))
+
+    return any(_name_matches(name, target) for name in names if name)
+
+
+def _fetch_matching_artist(artist, target):
+    if not isinstance(artist, dict) or not artist.get("id"):
+        return None
+    full = _fetch_full_artist_mb(artist["id"])
+    return full if _artist_matches(full, target) else None
+
 
 
 def search_artist_mb(artist_name, song_name=None, album_name=None):
@@ -92,8 +122,9 @@ def search_artist_mb(artist_name, song_name=None, album_name=None):
                 if not isinstance(credit, dict) or "artist" not in credit:
                     continue
                 a = credit["artist"]
-                if _name_matches(a.get("name", ""), artist_name):
-                    return _fetch_full_artist_mb(a["id"]), 0.98
+                full = _fetch_matching_artist(a, artist_name)
+                if full:
+                    return full, 0.98
 
     if album_name:
         r = _get(
@@ -110,8 +141,9 @@ def search_artist_mb(artist_name, song_name=None, album_name=None):
                 if not isinstance(credit, dict) or "artist" not in credit:
                     continue
                 a = credit["artist"]
-                if _name_matches(a.get("name", ""), artist_name):
-                    return _fetch_full_artist_mb(a["id"]), 0.95
+                full = _fetch_matching_artist(a, artist_name)
+                if full:
+                    return full, 0.95
 
     r = _get(
         f"{MUSICBRAINZ_BASE}/artist/",
@@ -120,8 +152,9 @@ def search_artist_mb(artist_name, song_name=None, album_name=None):
     )
     artists = r.json().get("artists", [])
     for a in artists:
-        if _name_matches(a.get("name", ""), artist_name):
-            return _fetch_full_artist_mb(a["id"]), 0.85
+        full = _fetch_matching_artist(a, artist_name)
+        if full:
+            return full, 0.85
     if artists:
         return _fetch_full_artist_mb(artists[0]["id"]), 0.60
     return None, 0.0
@@ -212,9 +245,11 @@ def get_artist_info(artist_name, song_name=None, album_name=None, no_cache=False
     if not no_cache:
         cached = load_cache(artist_name)
         if cached:
-            cached["from_cache"] = True
-            cached["elapsed_ms"] = round((time.time() - start) * 1000)
-            return cached
+            cached_accuracy = cached.get("accuracy", 1.0)
+            if _name_matches(cached.get("name", ""), artist_name) or cached_accuracy >= 0.8:
+                cached["from_cache"] = True
+                cached["elapsed_ms"] = round((time.time() - start) * 1000)
+                return cached
 
     mb, accuracy = search_artist_mb(artist_name, song_name=song_name, album_name=album_name)
     if not mb:

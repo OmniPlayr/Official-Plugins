@@ -2,7 +2,7 @@
     "id": "lyrics@built-in",
     "name": "lyrics",
     "author": "built-in",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "View lyrics for the currently playing song.",
     "type": "frontend",
     "repository": "https://github.com/OmniPlayr/Official-Plugins",

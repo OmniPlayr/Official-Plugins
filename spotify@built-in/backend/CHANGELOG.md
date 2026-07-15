@@ -4,6 +4,20 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.2.3] - 2026-07-15
+
+### Fixed
+
+- Backend: Invalid Spotify track IDs now surface as missing media instead of returning unusable stream metadata.
+- Frontend: Warm up and prime the Spotify Web Playback SDK after account selection and user gestures so the browser player is ready before the first playlist click.
+- Frontend: Improved Spotify transfer behavior for OmniPlayr device switching and clarified unsupported cast-output playback.
+- Frontend: Reconnect/recreate stale Spotify SDK devices, retry playback startup, and ignore missing-device cleanup pauses so stale device IDs no longer cause noisy 404 cleanup failures.
+- Frontend: Delayed generic Spotify Web Playback SDK diagnostics until reconnect/retry has a chance to recover, reducing noisy warnings during normal playback startup.
+- Frontend: Track SDK playback state until the requested track is actually playing, report track end state, and retry after reconnect when Spotify times out during startup.
+- Frontend: Spotify playback now transfers to the current Web Playback SDK device before starting and reconnects/retries once if that SDK device went stale.
+- Frontend: Spotify SDK recovery now recreates the browser player when the SDK script exists but the player object never became ready.
+- Frontend: Spotify playback now force-transfers to the OmniPlayr browser player, verifies the active device, and retries the takeover if Spotify reports no active playback device.
+
 ## [2.2.2] - 2026-07-10
 
 ### Fixed

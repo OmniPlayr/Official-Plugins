@@ -20,7 +20,7 @@ async function getArtist(artist_name: string, song?: string, album?: string) {
         ...(album ? { album } : {}),
     });
     const query = params.size ? `?${params}` : '';
-    const res = await api(`/plugin/artist/${artist_name}${query}`) as any;
+    const res = await api(`/plugin/artist/${encodeURIComponent(artist_name)}${query}`) as any;
     const end = performance.now();
     artistCache.set(artist_name, res);
     return { ...res, client_time: +(end - start).toFixed(2) };

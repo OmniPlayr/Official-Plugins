@@ -100,7 +100,7 @@ def disconnect(request: Request, auth=Depends(verify_auth)):
     return {"ok": True}
 
 
-@api.get("/artist/{artist}")
+@api.get("/artist/{artist:path}")
 def browse_music(
     artist: str,
     request: Request,
@@ -114,7 +114,7 @@ def browse_music(
     genius_token = _require_genius_token(_account_id(request))
     return get_artist_info(artist, song_name=song, album_name=album, no_cache=no_cache, genius_token=genius_token)
 
-@api.get("/album/{album}")
+@api.get("/album/{album:path}")
 def browse_album(
     album: str,
     request: Request,

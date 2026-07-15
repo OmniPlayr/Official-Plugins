@@ -1,7 +1,7 @@
 {
     "name": "youtube",
     "author": "built-in",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "description": "Listen to songs from youtube music with OmniPlayr by using the youtube@built-in plugin as a source.",
     "type": "backend",
     "repository": "https://github.com/OmniPlayr/Official-Plugins",

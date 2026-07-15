@@ -9,7 +9,10 @@ class SoundCloudPlugin(PluginBase):
         raise NotImplementedError("SoundCloud uses the HTML5 Widget API; audio is handled in the browser")
 
     def get_metadata(self, song_id: str, account_id: str) -> dict:
-        return routes.get_metadata(account_id, song_id)
+        metadata = routes.get_metadata(account_id, song_id)
+        if not metadata or not metadata.get("title"):
+            raise FileNotFoundError(f"SoundCloud track not found: {song_id}")
+        return metadata
 
 
 def setup():

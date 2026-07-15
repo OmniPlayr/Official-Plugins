@@ -1,6 +1,7 @@
 import requests
 import time
 import json
+import re
 from pathlib import Path
 from omniplayr.plugins import get_plugin_config
 from .artist import (
@@ -22,7 +23,7 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def cache_path(album_name, artist_name):
-    safe = f"{artist_name}_{album_name}".lower().replace(" ", "_")
+    safe = re.sub(r"[^a-z0-9_-]+", "_", f"{artist_name}_{album_name}".lower()).strip("_") or "unknown"
     return CACHE_DIR / f"{safe}.json"
 
 

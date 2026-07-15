@@ -62,7 +62,7 @@ If no lyrics are found, the side tab shows a translated not-found message.
 | `Dashboard.dashboard-hor` | Adds the lyrics side tab |
 | `Player.plugin-target-before-volume-option` | Adds the lyrics toggle button |
 
-The side tab shares width and active-tab state with other compatible side-tab plugins, including `queued@built-in`.
+The side tab shares width and active-tab state with other compatible side-tab plugins, including `queued@built-in` and `devices@built-in`.
 
 ---
 

@@ -1,9 +1,18 @@
 .queue-plugin-root {
     height: 100%;
+    min-width: 0;
+    flex: 0 0 auto;
+}
+
+.queue-plugin-root:has(> .queue-view-container-collapsed) {
+    width: 0;
+    flex-basis: 0;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .queue-view-container {
-    width: 300px;
+    width: var(--queue-sidetab-width, 300px);
     min-width: 300px;
     height: 100%;
     background-color: var(--clr-popup-a0);
@@ -24,20 +33,22 @@
         min-width 220ms ease-in-out,
         padding 220ms ease-in-out,
         margin-left 220ms ease-in-out,
-        border-color 220ms ease-in-out,
-        opacity 160ms ease-in-out;
+        border-color 220ms ease-in-out;
     will-change: width;
 }
 
 .queue-view-container-hidden {
+    width: 0;
     min-width: 0;
     padding-left: 0;
     padding-right: 0;
     margin-left: 0;
-    border-color: transparent;
-    opacity: 0;
     pointer-events: none;
     gap: 0;
+}
+
+.queue-view-container-closing {
+    pointer-events: none;
 }
 
 .queue-view-container-popup {
@@ -89,6 +100,7 @@
     border-left-color: var(--clr-primary-a0);
 }
 
+.queue-view-container-switching,
 .sidetab-switching .queue-view-container {
     transition: none;
 }

@@ -4,6 +4,15 @@ All notable changes to `lyrics@built-in` are documented here. This changelog fol
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-07-15
+
+### Changed
+
+- Added Dutch and English plugin-local translations.
+- Improved side-tab transitions and loading states.
+- Added `devices@built-in` to the shared side-tab active state.
+- Collapsed the lyrics side-tab root when lyrics are closed.
+
 ## [1.0.1] - 2026-07-11
 
 ### Fixed

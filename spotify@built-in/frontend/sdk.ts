@@ -50,6 +50,11 @@ export interface SpotifyPlayer {
 }
 
 type StateListener = (state: SpotifyState | null) => void;
+type SpotifyApiDevice = Record<string, unknown> & {
+    id?: string | null;
+    is_active?: boolean;
+    is_restricted?: boolean;
+};
 
 let sdkPlayer: SpotifyPlayer | null = null;
 let deviceId: string | null = null;
@@ -58,10 +63,18 @@ const stateListeners = new Set<StateListener>();
 let readyResolve: (() => void) | null = null;
 let readyPromise = new Promise<void>(r => { readyResolve = r; });
 let sdkLoadStarted = false;
+let sdkInitPromise: Promise<boolean> | null = null;
+let sdkScriptPromise: Promise<void> | null = null;
+let lastSdkSetupError: string | null = null;
 let lastPlaybackErrorMessage: string | null = null;
 let lastPlaybackErrorAt = 0;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let playbackErrorDiagnosticTimer: ReturnType<typeof setTimeout> | null = null;
 let diagnosticsInFlight = false;
+let playbackCommandInFlight = 0;
+let intentionalDisconnectInFlight = false;
+let gestureActivationListenersInstalled = false;
+let lastGestureActivationErrorAt = 0;
 
 function spotifyConsoleError(message: string, error?: unknown) {
     if (error) {
@@ -77,6 +90,34 @@ function spotifyConsoleWarn(message: string, error?: unknown) {
     } else {
         console.warn(`[spotify@built-in] ${message}`);
     }
+}
+
+function activateCurrentPlayerFromGesture() {
+    const player = sdkPlayer;
+    if (!player) return;
+
+    try {
+        void player.activateElement().catch(error => {
+            const now = Date.now();
+            if (now - lastGestureActivationErrorAt < 10000) return;
+            lastGestureActivationErrorAt = now;
+            spotifyConsoleWarn('Spotify player could not be primed from this browser gesture.', error);
+        });
+    } catch (error) {
+        const now = Date.now();
+        if (now - lastGestureActivationErrorAt < 10000) return;
+        lastGestureActivationErrorAt = now;
+        spotifyConsoleWarn('Spotify player could not be primed from this browser gesture.', error);
+    }
+}
+
+function installGestureActivationListeners() {
+    if (gestureActivationListenersInstalled || typeof document === 'undefined') return;
+
+    gestureActivationListenersInstalled = true;
+    document.addEventListener('pointerdown', activateCurrentPlayerFromGesture, { capture: true, passive: true });
+    document.addEventListener('touchstart', activateCurrentPlayerFromGesture, { capture: true, passive: true });
+    document.addEventListener('keydown', activateCurrentPlayerFromGesture, { capture: true });
 }
 
 function describePlaybackError(message: string) {
@@ -114,7 +155,94 @@ async function getSpotifyJson(path: string, token: string) {
     return { ok: res.ok, status: res.status, body };
 }
 
-async function putSpotifyCommand(path: string, errorLabel: string) {
+async function readSpotifyError(res: Response) {
+    try {
+        return await res.text();
+    } catch {
+        return '';
+    }
+}
+
+function sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const timeoutPromise = new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), ms);
+    });
+
+    return Promise.race([promise, timeoutPromise]).finally(() => {
+        if (timer) clearTimeout(timer);
+    });
+}
+
+function reportPlaybackIssue(message: string, error?: unknown) {
+    const now = Date.now();
+    const isDuplicate = message === lastPlaybackErrorMessage && now - lastPlaybackErrorAt < 30000;
+    lastPlaybackErrorMessage = message;
+    lastPlaybackErrorAt = now;
+
+    if (!isDuplicate) spotifyConsoleWarn(message, error);
+}
+
+function makeSpotifyActionError(action: string, error: unknown) {
+    const detail = error instanceof Error ? error.message : String(error);
+    return new Error(
+        `Spotify could not ${action} in OmniPlayr. ` +
+        `Make sure the Spotify account is Premium, click play from OmniPlayr once, keep this browser tab open, and try again. ` +
+        `Details: ${detail}`
+    );
+}
+
+async function getSpotifyDevices(token: string): Promise<SpotifyApiDevice[]> {
+    const devicesResult = await getSpotifyJson('/me/player/devices', token);
+
+    if (!devicesResult || !devicesResult.ok || !devicesResult.body || typeof devicesResult.body !== 'object') {
+        return [];
+    }
+
+    const devices = (devicesResult.body as { devices?: unknown }).devices;
+    return Array.isArray(devices) ? devices as SpotifyApiDevice[] : [];
+}
+
+async function getActiveSpotifyDeviceId(token: string) {
+    const devices = await getSpotifyDevices(token);
+    return devices.find(device => device.is_active === true)?.id ?? null;
+}
+
+async function waitForActiveSpotifyDevice(token: string, targetDeviceId: string, timeoutMs = 2500) {
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < timeoutMs) {
+        const activeDeviceId = await getActiveSpotifyDeviceId(token);
+        if (activeDeviceId === targetDeviceId) return true;
+        await sleep(250);
+    }
+
+    return false;
+}
+
+async function playTrackOnDevice(token: string, targetDeviceId: string, trackId: string) {
+    const res = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(targetDeviceId)}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uris: [`spotify:track:${trackId}`] }),
+    });
+
+    if (res.ok || res.status === 204) return;
+
+    const details = await readSpotifyError(res);
+    throw new Error(`Spotify play failed: ${res.status}${details ? ` ${details}` : ''}`);
+}
+
+async function putSpotifyCommand(
+    path: string,
+    errorLabel: string,
+    options: { ignoreMissingDevice?: boolean; reconnectOnMissingDevice?: boolean } = {}
+) {
     const targetDeviceId = deviceId;
     if (!targetDeviceId) return;
 
@@ -132,12 +260,22 @@ async function putSpotifyCommand(path: string, errorLabel: string) {
 
     if (res.ok || res.status === 204) return;
 
-    let details = '';
-    try {
-        details = await res.text();
-    } catch {
-        details = '';
+    if (res.status === 404) {
+        deviceId = null;
+        notifyState(null);
+        resetReady();
+
+        if (options.reconnectOnMissingDevice) {
+            await sdkReconnectNow();
+            return putSpotifyCommand(path, errorLabel, { ...options, reconnectOnMissingDevice: false });
+        }
+
+        if (options.ignoreMissingDevice) return;
+
+        scheduleReconnect();
     }
+
+    const details = await readSpotifyError(res);
 
     throw new Error(`${errorLabel}: ${res.status}${details ? ` ${details}` : ''}`);
 }
@@ -235,30 +373,27 @@ async function diagnosePlaybackError(message: string) {
     }
 }
 
-function scheduleReconnect() {
-    if (reconnectTimer || !sdkPlayer) return;
+function scheduleReconnect(delayMs = 1500) {
+    if (reconnectTimer) return;
 
     reconnectTimer = setTimeout(async () => {
         reconnectTimer = null;
-        if (!sdkPlayer) return;
+
+        if (playbackCommandInFlight > 0) {
+            scheduleReconnect(3000);
+            return;
+        }
 
         try {
-            deviceId = null;
-            notifyState(null);
-            resetReady();
-            const connected = await sdkPlayer.connect();
-
-            if (!connected) {
-                spotifyConsoleWarn('Spotify Web Playback SDK reconnect was rejected.');
-            }
+            await sdkReconnectNow();
         } catch (error) {
             spotifyConsoleWarn('Spotify Web Playback SDK reconnect failed.', error);
         }
-    }, 1500);
+    }, delayMs);
 }
 
 async function loadAccount(): Promise<{ name?: string } | null> {
-    const account = await api("get_account", undefined, { account_id: "me" });
+    const account = await api("/accounts/me");
 
     if (account && typeof account === 'object' && 'name' in account) {
         return account as { name?: string };
@@ -271,8 +406,201 @@ function resetReady() {
     readyPromise = new Promise<void>(r => { readyResolve = r; });
 }
 
+async function waitForReadyDevice(timeoutMs = 10000) {
+    if (sdkPlayer && deviceId) return;
+    await withTimeout(
+        readyPromise,
+        timeoutMs,
+        'Timed out waiting for Spotify Web Playback SDK readiness'
+    );
+}
+
+async function reconnectExistingPlayer(timeoutMs = 5000) {
+    if (!sdkPlayer) return false;
+
+    deviceId = null;
+    notifyState(null);
+    resetReady();
+
+    const connected = await sdkPlayer.connect();
+    if (!connected) return false;
+
+    try {
+        await waitForReadyDevice(timeoutMs);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function createSdkScriptPromise() {
+    if (window.Spotify?.Player) return Promise.resolve();
+    if (sdkScriptPromise) return sdkScriptPromise;
+
+    sdkLoadStarted = true;
+    sdkScriptPromise = new Promise<void>((resolve, reject) => {
+        const existing = document.getElementById('spotify-sdk') as HTMLScriptElement | null;
+        const script = existing ?? document.createElement('script');
+        let readyCheck: ReturnType<typeof window.setInterval> | null = null;
+
+        const cleanup = () => {
+            window.clearTimeout(timeout);
+            if (readyCheck) window.clearInterval(readyCheck);
+        };
+
+        const finishIfReady = () => {
+            if (!window.Spotify?.Player) return false;
+            cleanup();
+            resolve();
+            return true;
+        };
+
+        const waitUntilReady = () => {
+            if (finishIfReady() || readyCheck) return;
+            readyCheck = window.setInterval(finishIfReady, 50);
+        };
+
+        const timeout = window.setTimeout(() => {
+            cleanup();
+            sdkLoadStarted = false;
+            sdkScriptPromise = null;
+            if (!window.Spotify?.Player) script.remove();
+            reject(new Error('Timed out loading Spotify Web Playback SDK script'));
+        }, 10000);
+
+        const fail = () => {
+            cleanup();
+            sdkLoadStarted = false;
+            sdkScriptPromise = null;
+            script.remove();
+            reject(new Error('Spotify Web Playback SDK script failed to load'));
+        };
+
+        const previousReady = window.onSpotifyWebPlaybackSDKReady;
+        window.onSpotifyWebPlaybackSDKReady = () => {
+            previousReady?.();
+            waitUntilReady();
+        };
+
+        script.addEventListener('load', waitUntilReady, { once: true });
+        script.addEventListener('error', fail, { once: true });
+
+        if (!existing) {
+            script.id = 'spotify-sdk';
+            script.src = 'https://sdk.scdn.co/spotify-player.js';
+            document.head.appendChild(script);
+        } else {
+            waitUntilReady();
+        }
+    });
+
+    return sdkScriptPromise;
+}
+
+async function initializeSpotifyPlayer() {
+    if (sdkPlayer) {
+        if (!deviceId) {
+            resetReady();
+            const connected = await sdkPlayer.connect();
+            if (!connected) spotifyConsoleWarn('Spotify Web Playback SDK reconnect was rejected.');
+        }
+
+        return true;
+    }
+
+    if (!window.Spotify?.Player) return false;
+    if (sdkInitPromise) return sdkInitPromise;
+
+    sdkInitPromise = (async () => {
+        const account = await loadAccount();
+        const name = account?.name;
+
+        sdkPlayer = new window.Spotify.Player({
+            name: name ? `OmniPlayr - ${name}` : 'OmniPlayr',
+            getOAuthToken: async (cb: (t: string) => void) => {
+                const t = await getValidToken();
+                if (t) cb(t);
+            },
+            volume: 1,
+        });
+        window.sdkPlayer = sdkPlayer;
+
+        sdkPlayer.addListener('ready', ({ device_id }: { device_id: string }) => {
+            lastSdkSetupError = null;
+            deviceId = device_id;
+            readyResolve?.();
+        });
+
+        sdkPlayer.addListener('not_ready', () => {
+            if (intentionalDisconnectInFlight) return;
+            spotifyConsoleError('Spotify Web Playback SDK device became unavailable.');
+            deviceId = null;
+            notifyState(null);
+            resetReady();
+            scheduleReconnect();
+        });
+
+        sdkPlayer.addListener('initialization_error', ({ message }: { message: string }) => {
+            lastSdkSetupError = message;
+            spotifyConsoleError(`Spotify SDK initialization failed: ${message}`);
+        });
+
+        sdkPlayer.addListener('authentication_error', ({ message }: { message: string }) => {
+            lastSdkSetupError = message;
+            spotifyConsoleError(`Spotify SDK authentication failed: ${message}`);
+        });
+
+        sdkPlayer.addListener('account_error', ({ message }: { message: string }) => {
+            lastSdkSetupError = message;
+            spotifyConsoleError(`Spotify SDK account error: ${message}`);
+        });
+
+        sdkPlayer.addListener('playback_error', ({ message }: { message: string }) => {
+            const text = message || 'Playback error';
+            const now = Date.now();
+            const isDuplicate = text === lastPlaybackErrorMessage && now - lastPlaybackErrorAt < 30000;
+            const isGenericPlaybackError = text.toLowerCase() === 'playback error';
+
+            lastPlaybackErrorMessage = text;
+            lastPlaybackErrorAt = now;
+
+            if (isGenericPlaybackError) {
+                notifyState(null);
+                scheduleReconnect();
+                if (!isDuplicate) schedulePlaybackErrorDiagnostic(text);
+                return;
+            }
+
+            if (!isDuplicate) diagnosePlaybackError(text);
+        });
+
+        sdkPlayer.addListener('autoplay_failed', () => {
+            spotifyConsoleError('Spotify autoplay was blocked by the browser.');
+        });
+
+        sdkPlayer.addListener('player_state_changed', notifyState);
+
+        const connected = await sdkPlayer.connect();
+        if (!connected) spotifyConsoleWarn('Spotify Web Playback SDK connection was rejected.');
+
+        return connected;
+    })().finally(() => {
+        sdkInitPromise = null;
+    });
+
+    return sdkInitPromise;
+}
+
 function notifyState(state: SpotifyState | null) {
     currentState = state;
+    if (state && !state.paused && playbackErrorDiagnosticTimer) {
+        clearTimeout(playbackErrorDiagnosticTimer);
+        playbackErrorDiagnosticTimer = null;
+    }
+    if (state && !state.paused && reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+    }
     stateListeners.forEach(cb => cb(state));
 }
 
@@ -288,10 +616,61 @@ export function waitReady() {
     return readyPromise;
 }
 
+function schedulePlaybackErrorDiagnostic(message: string) {
+    if (playbackErrorDiagnosticTimer) {
+        clearTimeout(playbackErrorDiagnosticTimer);
+    }
+
+    playbackErrorDiagnosticTimer = setTimeout(() => {
+        playbackErrorDiagnosticTimer = null;
+
+        const state = currentState;
+        if (state && !state.paused) return;
+
+        diagnosePlaybackError(message);
+    }, 8000);
+}
+
+export async function sdkReconnectNow() {
+    if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+    }
+
+    deviceId = null;
+    notifyState(null);
+    resetReady();
+
+    if (!sdkPlayer) {
+        const loaded = await loadSdk();
+        if (!loaded) throw new Error('Spotify SDK player is not loaded');
+        await waitForReadyDevice();
+        return;
+    }
+
+    if (await reconnectExistingPlayer()) return;
+
+    try {
+        intentionalDisconnectInFlight = true;
+        sdkPlayer.disconnect();
+    } catch {
+
+    } finally {
+        intentionalDisconnectInFlight = false;
+    }
+    sdkPlayer = null;
+
+    const connected = await initializeSpotifyPlayer();
+
+    if (!connected) {
+        throw new Error('Spotify Web Playback SDK reconnect was rejected');
+    }
+
+    await waitForReadyDevice();
+}
+
 export async function loadSdk(): Promise<boolean> {
-    if (document.getElementById('spotify-sdk')) return true;
-    const account = await loadAccount();
-    const name = account?.name;
+    installGestureActivationListeners();
 
     if (
         window.location.protocol === 'http:' &&
@@ -304,123 +683,90 @@ export async function loadSdk(): Promise<boolean> {
         window.location.protocol === 'http:' &&
         (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ) {
-        console.warn('[spotify@built-in] Running on localhost over HTTP is allowed, but Spotify features may still require HTTPS in production.');
+        console.info('[spotify@built-in] Running on localhost over HTTP is allowed, but Spotify features may still require HTTPS in production.');
     }
 
     window.onSpotifyWebPlaybackSDKReady = () => {
-        sdkPlayer = new window.Spotify.Player({
-            name: 'OmniPlayr • ' + name,
-            getOAuthToken: async (cb: (t: string) => void) => {
-                const t = await getValidToken();
-                if (t) cb(t);
-            },
-            volume: 1,
-        });
-        window.sdkPlayer = sdkPlayer;
-
-        sdkPlayer.addListener('ready', ({ device_id }: { device_id: string }) => {
-            deviceId = device_id;
-            readyResolve?.();
-        });
-
-        sdkPlayer.addListener('not_ready', () => {
-            spotifyConsoleError('Spotify Web Playback SDK device became unavailable.');
-            deviceId = null;
-            notifyState(null);
-            resetReady();
-            scheduleReconnect();
-        });
-
-        sdkPlayer.addListener('initialization_error', ({ message }: { message: string }) => {
-            spotifyConsoleError(`Spotify SDK initialization failed: ${message}`);
-        });
-
-        sdkPlayer.addListener('authentication_error', ({ message }: { message: string }) => {
-            spotifyConsoleError(`Spotify SDK authentication failed: ${message}`);
-        });
-
-        sdkPlayer.addListener('account_error', ({ message }: { message: string }) => {
-            spotifyConsoleError(`Spotify SDK account error: ${message}`);
-        });
-
-        sdkPlayer.addListener('playback_error', ({ message }: { message: string }) => {
-            const text = message || 'Playback error';
-            const now = Date.now();
-            const isDuplicate = text === lastPlaybackErrorMessage && now - lastPlaybackErrorAt < 30000;
-
-            lastPlaybackErrorMessage = text;
-            lastPlaybackErrorAt = now;
-
-            if (!isDuplicate) diagnosePlaybackError(text);
-
-            if (text.toLowerCase() === 'playback error') {
-                notifyState(null);
-                scheduleReconnect();
-            }
-        });
-
-        sdkPlayer.addListener('autoplay_failed', () => {
-            spotifyConsoleError('Spotify autoplay was blocked by the browser.');
-        });
-
-        sdkPlayer.addListener('player_state_changed', notifyState);
-
-        sdkPlayer.connect();
+        void initializeSpotifyPlayer();
     };
 
-    sdkLoadStarted = true;
-    const script = document.createElement('script');
-    script.id = 'spotify-sdk';
-    script.src = 'https://sdk.scdn.co/spotify-player.js';
-    script.onerror = () => {
-        sdkLoadStarted = false;
-        spotifyConsoleError('Spotify Web Playback SDK script failed to load.');
-    };
-    document.head.appendChild(script);
-
-    return true;
+    try {
+        await createSdkScriptPromise();
+        const connected = await initializeSpotifyPlayer();
+        if (!connected) return false;
+        await waitForReadyDevice();
+        return true;
+    } catch (error) {
+        spotifyConsoleError('Spotify Web Playback SDK is not ready.', error);
+        return false;
+    }
 }
 
 export function isSdkLoadStarted() { return sdkLoadStarted; }
 
 export async function sdkPlay(trackId: string) {
-    await waitReady();
-    const token = await getValidToken();
-    if (!token || !deviceId || !sdkPlayer) throw new Error('Spotify not ready');
+    playbackCommandInFlight += 1;
 
-    await sdkPlayer.activateElement();
+    try {
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+            const loaded = await loadSdk();
+            if (!loaded) {
+                throw makeSpotifyActionError(
+                    'initialize playback',
+                    lastSdkSetupError ?? 'Spotify SDK player is not loaded'
+                );
+            }
 
-    const res = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uris: [`spotify:track:${trackId}`] }),
-    });
+            await waitForReadyDevice();
+            const token = await getValidToken();
+            const targetDeviceId = deviceId;
+            const player = sdkPlayer;
+            if (!token) throw makeSpotifyActionError('start playback', 'Spotify token is unavailable');
+            if (!targetDeviceId || !player) throw makeSpotifyActionError('start playback', 'Spotify browser player is not ready');
 
-    if (!res.ok && res.status !== 204) {
-        let details = '';
-        try {
-            details = await res.text();
-        } catch {
-            details = '';
+            try {
+                await player.activateElement();
+                await playTrackOnDevice(token, targetDeviceId, trackId);
+
+                if (!(await waitForActiveSpotifyDevice(token, targetDeviceId))) {
+                    await playTrackOnDevice(token, targetDeviceId, trackId);
+                }
+
+                return;
+            } catch (error) {
+                if (attempt > 0) {
+                    const playbackError = makeSpotifyActionError('start playback', error);
+                    reportPlaybackIssue(playbackError.message);
+                    throw playbackError;
+                }
+
+                await sdkReconnectNow();
+            }
         }
-
-        throw new Error(`Spotify play failed: ${res.status}${details ? ` ${details}` : ''}`);
+    } finally {
+        playbackCommandInFlight = Math.max(0, playbackCommandInFlight - 1);
     }
 }
 
-export async function sdkPause() {
-    await putSpotifyCommand('/me/player/pause', 'Spotify pause failed');
+export async function sdkPause(options: { silentIfMissing?: boolean } = {}) {
+    await putSpotifyCommand('/me/player/pause', 'Spotify pause failed', {
+        ignoreMissingDevice: options.silentIfMissing,
+    });
 }
 
 export async function sdkResume() {
+    installGestureActivationListeners();
     await sdkPlayer?.activateElement();
-    await putSpotifyCommand('/me/player/play', 'Spotify resume failed');
+    await putSpotifyCommand('/me/player/play', 'Spotify resume failed', {
+        reconnectOnMissingDevice: true,
+    });
 }
 
 export async function sdkSeek(ms: number) {
     await putSpotifyCommand(
         `/me/player/seek?position_ms=${Math.max(0, Math.floor(ms))}`,
-        'Spotify seek failed'
+        'Spotify seek failed',
+        { reconnectOnMissingDevice: true }
     );
 }
 
@@ -428,10 +774,31 @@ export async function sdkSetVolume(fraction: number) {
     if (!currentState) return;
     await sdkPlayer?.setVolume(Math.max(0, Math.min(1, fraction)));
 }
-export function sdkActivateElement() { return sdkPlayer?.activateElement(); }
+export function sdkActivateElement() {
+    installGestureActivationListeners();
+    return sdkPlayer?.activateElement();
+}
+
+export function sdkPrimeActivation() {
+    installGestureActivationListeners();
+    const currentPlayer = sdkPlayer;
+    if (currentPlayer) {
+        return currentPlayer.activateElement();
+    }
+
+    return loadSdk().then(loaded => {
+        if (!loaded) return undefined;
+        return sdkPlayer?.activateElement();
+    });
+}
 
 export function sdkDisconnect() {
-    sdkPlayer?.disconnect();
+    try {
+        intentionalDisconnectInFlight = true;
+        sdkPlayer?.disconnect();
+    } finally {
+        intentionalDisconnectInFlight = false;
+    }
     sdkPlayer = null;
     deviceId = null;
     currentState = null;

@@ -23,7 +23,7 @@ async function getAlbum(artist: string, song?: string, album?: string, type?: st
         ...(type ? { type } : {}),
     });
     const query = params.size ? `?${params}` : '';
-    const res = await api(`/plugin/album/${album}${query}`) as any;
+    const res = await api(`/plugin/album/${encodeURIComponent(album || '')}${query}`) as any;
     const end = performance.now();
     albumCache.set(album + "_" + artist, res);
     return { ...res, client_time: +(end - start).toFixed(2) };

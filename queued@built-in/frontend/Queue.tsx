@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPopup, hasFrontendPlugin, on, player, useIsMobile } from '@omniplayr/plugins';
 import { LoaderCircle } from 'lucide-react';
-import translations from '.';
+import translations from './translations';
 import Song from './Song';
 import { QUEUE_MIN_WIDTH, QUEUE_PAGE_SIZE, QUEUE_POPUP_ID } from './constants';
 import { currentQueueSong, metadataFromQueueItem } from './metadata';
@@ -9,6 +9,7 @@ import { getPlaylistQueueSongs, parsePlaylistQueue } from './playlistQueue';
 import { moveItemToDropTarget, replaceNextQueuePreservingOrder, replacePriorityQueue } from './playerQueue';
 import { queueSignature } from './queueSignature';
 import { getQueueVisibleState, readStoredQueueWidth, setSideTabWidth, subscribeQueueVisibleState, subscribeSideTabWidth } from './queueState';
+import { useSideTabTransition } from './useSideTabTransition';
 import type { DragState, DropTarget, QueueSection, QueueSong } from './types';
 import './styles/Queue.css';
 
@@ -16,6 +17,7 @@ export default function Queue({ popup = false }: { popup?: boolean }) {
     const { t } = translations.useTranslation();
     const isMobile = useIsMobile();
     const [ queueVisible, setQueueVisible ] = useState(getQueueVisibleState);
+    const queueTransition = useSideTabTransition('queue', queueVisible, popup);
     const [ currentSong, setCurrentSong ] = useState<QueueSong | null>(null);
     const [ priorityQueueItems, setPriorityQueueItems ] = useState<QueueSong[]>([]);
     const [ nextQueueItems, setNextQueueItems ] = useState<QueueSong[]>([]);
@@ -294,10 +296,10 @@ export default function Queue({ popup = false }: { popup?: boolean }) {
 
     return (
         <div
-            className={`queue-view-container${popup ? ' queue-view-container-popup' : ''}${!popup && !queueVisible ? ' queue-view-container-hidden' : ''}`}
+            className={`queue-view-container${popup ? ' queue-view-container-popup' : ''}${queueTransition.switching ? ' queue-view-container-switching' : ''}${queueTransition.closing ? ' queue-view-container-closing' : ''}${queueTransition.hidden ? ' queue-view-container-hidden' : ''}${queueTransition.collapsed ? ' queue-view-container-collapsed' : ''}`}
             ref={containerRef}
             onScroll={loadMoreIfNeeded}
-            style={popup ? undefined : { width: queueVisible ? queueWidth : 0 }}
+            style={popup ? undefined : { '--queue-sidetab-width': `${queueWidth}px` } as React.CSSProperties}
             aria-hidden={!popup && !queueVisible}
         >
             {!popup && queueVisible && (

@@ -4,6 +4,13 @@ All notable changes to `artists@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.1.2] - 2026-07-13
+
+### Fixed
+
+- Backend: Hardened artist and album path handling and cache fallbacks so profile routes handle special characters and missing cached data more reliably.
+- Frontend: Improved artist and album route handling and plugin navigation integration.
+
 ## [2.1.1] - 2026-07-08
 
 ### Added

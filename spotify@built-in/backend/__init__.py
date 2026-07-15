@@ -9,7 +9,10 @@ class SpotifyPlugin(PluginBase):
         raise NotImplementedError("Spotify uses the Web Playback SDK; audio is handled in the browser")
 
     def get_metadata(self, song_id: str, account_id: str) -> dict:
-        return routes.get_metadata(account_id, song_id)
+        metadata = routes.get_metadata(account_id, song_id)
+        if not metadata or not metadata.get("title"):
+            raise FileNotFoundError(f"Spotify track not found: {song_id}")
+        return metadata
 
 
 def setup():

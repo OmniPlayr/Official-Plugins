@@ -4,6 +4,20 @@ All notable changes to `playlists@built-in` are documented here. This changelog 
 
 ## [Unreleased]
 
+## [beta-1.4.1] - 2026-07-15
+
+### Added
+
+- Backend: Added account-scoped playlist routes that can resolve the current account through `me` and return cached playlist data.
+- Frontend: Added translated playlist UI labels and improved playlist queue/device handoff behavior.
+
+### Fixed
+
+- Backend: Reduced account-summary lookup overhead during playlist listing and cache reads.
+- Frontend: Scope Home playlist caches to the selected account and refresh them on account switches so password-protected login no longer leaves stale or anonymous Home data.
+- Frontend: Render streamed and cached external playlist updates as they arrive and fall back to cached playlists when the stream is slow.
+- Frontend: Prime source-plugin activation from Home, playlist, and service playlist controls so Spotify playback starts from the user gesture.
+
 ## [beta-1.4.0] - 2026-07-10
 
 ### Added

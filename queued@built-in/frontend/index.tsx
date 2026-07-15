@@ -1,12 +1,32 @@
 import { createRoot, type Root } from "react-dom/client";
 import Queue from "./Queue";
-import { definePluginTranslations, modify } from "@omniplayr/plugins";
+import { modify } from "@omniplayr/plugins";
 import QueueButton from "./QueueButton";
+import translations from './translations';
 
 const plugin_key = "queued@built-in";
 
 const roots = new WeakMap<Element, Root>();
-const translations = definePluginTranslations(plugin_key);
+type RootContainer = Element & {
+    __omniplayrReactRoot?: Root;
+};
+
+function getRoot(container: Element) {
+    const rootContainer = container as RootContainer;
+    let root = rootContainer.__omniplayrReactRoot ?? roots.get(container);
+
+    if (!root) {
+        try {
+            root = createRoot(container);
+            rootContainer.__omniplayrReactRoot = root;
+            roots.set(container, root);
+        } catch (e) {
+            console.error('Failed to create root for plugin', plugin_key, e);
+        }
+    }
+
+    return root;
+}
 
 function getSideTabButtonSlot(el: Element, className: string, order: number) {
     let group = el.querySelector(
@@ -44,16 +64,7 @@ modify(plugin_key, 'Dashboard.dashboard-hor', el => {
         el.appendChild(container);
     }
 
-    let root = roots.get(container);
-
-    if (!root) {
-        try {
-            root = createRoot(container);
-            roots.set(container, root);
-        } catch (e) {
-            console.error('Failed to create root for plugin', plugin_key, e);
-        }
-    }
+    const root = getRoot(container);
 
     if (root) {
         root.render(<Queue />);
@@ -65,17 +76,8 @@ modify(plugin_key, 'Player.plugin-target-before-volume-option', el => {
 
     const container = getSideTabButtonSlot(el, "queue-button-plugin-root", 2);
 
-    let root = roots.get(container);
+    const root = getRoot(container);
 
-    if (!root) {
-        try {
-            root = createRoot(container);
-            roots.set(container, root);
-        } catch (e) {
-            console.error('Failed to create root for plugin', plugin_key, e);
-        }
-    }
-    
     if (root) {
         root.render(<QueueButton />);
     }
@@ -90,4 +92,4 @@ export {
     subscribeQueueVisibleState,
     subscribeSideTabWidth,
     toggleQueueVisibleState,
-} from "./Queue";
+} from "./queueState";

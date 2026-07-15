@@ -52,7 +52,8 @@ def setup():
                 "updated_at": "TIMESTAMPTZ NOT NULL DEFAULT NOW()",
                 "private": "BOOLEAN NOT NULL DEFAULT FALSE"
             }
-        }
+        },
+        read=["accounts"],
     )
     if db is None:
         log("Failed to initialize database", "error")

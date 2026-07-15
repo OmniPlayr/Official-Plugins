@@ -4,8 +4,9 @@ import { getLyricsVisibleState, readStoredSideTabWidth, setSideTabWidth, subscri
 import { player } from '@omniplayr/plugins';
 import getLyrics from './lyrics';
 import { AudioLines, LoaderCircle, Music } from 'lucide-react';
-import translations from '.';
+import translations from './translations';
 import { currentQueueSong } from './metadata';
+import { useSideTabTransition } from './useSideTabTransition';
 
 const SIDETAB_MIN_WIDTH = 300;
 const FOLLOW_CENTER_THRESHOLD_PX = 140;
@@ -450,6 +451,7 @@ function Lyrics({
 function LyricsView() {
     const { t } = translations.useTranslation();
     const [ lyricsVisible, setLyricsVisible ] = useState(getLyricsVisibleState);
+    const lyricsTransition = useSideTabTransition('lyrics', lyricsVisible);
     const [ sideTabWidth, setSideTabWidthState ] = useState(readStoredSideTabWidth);
     const [ lyricsState, setLyricsState ] = useState<LyricsLoadState>({ status: 'idle', lyrics: null });
     const containerRef = useRef<HTMLDivElement>(null);
@@ -670,7 +672,7 @@ function LyricsView() {
     const notFoundMessageId = (hashString(currentTrackKey() ?? 'idle') % NOT_FOUND_MESSAGE_COUNT) + 1;
 
     const containerStyle = {
-        width: lyricsVisible ? sideTabWidth : 0,
+        '--lyrics-sidetab-width': `${sideTabWidth}px`,
         ...(averageColor ? {
             backgroundColor: averageColor.color,
             '--lyrics-text-a0': averageColor.textA0,
@@ -682,7 +684,7 @@ function LyricsView() {
 
     return (
         <div
-            className={`lyrics-sidetab-container${!lyricsVisible ? ' lyrics-sidetab-container-hidden' : ''}`}
+            className={`lyrics-sidetab-container${lyricsTransition.switching ? ' lyrics-sidetab-container-switching' : ''}${lyricsTransition.closing ? ' lyrics-sidetab-container-closing' : ''}${lyricsTransition.hidden ? ' lyrics-sidetab-container-hidden' : ''}${lyricsTransition.collapsed ? ' lyrics-sidetab-container-collapsed' : ''}`}
             ref={containerRef}
             style={containerStyle}
             aria-hidden={!lyricsVisible}

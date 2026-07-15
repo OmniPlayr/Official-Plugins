@@ -103,6 +103,8 @@ def _try_cache(artist_name, album_name=None, song_name=None):
         result["accuracy"] = max(result["accuracy"], cached_album.get("accuracy", 1.0))
         if song_name:
             result["song_exists"] = _cached_song_exists(cached_album, song_name)
+            if not result["song_exists"]:
+                return None
         result["from_cache"] = True
         return result
 
@@ -111,10 +113,7 @@ def _try_cache(artist_name, album_name=None, song_name=None):
         return result
 
     if cached_artist and album_name and not cached_release:
-        if song_name:
-            result["song_exists"] = False
-        result["from_cache"] = True
-        return result
+        return None
 
     if cached_artist and album_name and cached_release and not song_name:
         result["from_cache"] = True

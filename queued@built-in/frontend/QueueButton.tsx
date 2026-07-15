@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { List } from "lucide-react";
 import "./styles/QueueButton.css";
-import { getQueueVisibleState, subscribeQueueVisibleState, toggleQueueVisibleState } from "./Queue";
+import { getQueueVisibleState, subscribeQueueVisibleState, toggleQueueVisibleState } from "./queueState";
 
 function QueueButton() {
     const [ visible, setVisible ] = useState(getQueueVisibleState);

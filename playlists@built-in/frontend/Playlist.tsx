@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import translations from ".";
+import translations from "./translations";
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Check, ChevronLeft, ChevronRight, Clock, Code2, Copy, Disc3, List, ListPlus, LoaderCircle, Pause, Play, Search, Share2, Shuffle, User, Volume2 } from "lucide-react";
 import { Tooltip } from "react-tooltip";
@@ -191,7 +191,7 @@ function account(cache: PlaylistCache) {
     if (cache.account) return Promise.resolve(cache.account);
     if (cache.accountRequest) return cache.accountRequest;
 
-    cache.accountRequest = api('get_account', undefined, { account_id: 'me' })
+    cache.accountRequest = api('/accounts/me')
         .then((response) => {
             cache.account = response as UserAccount;
             return cache.account;
@@ -751,11 +751,21 @@ function Playlist() {
             .map(({ song }) => song);
     }, [songs, searchableSongs, searchQuery]);
 
+    useEffect(() => {
+        if (playlist?.service === 'spotify') {
+            player.activateSource('spotify');
+        }
+    }, [playlist?.service]);
+
     if (!playlist) {
         return (
             <div className="playlist-loading"><LoaderCircle /></div>
         );
     }
+
+    const primePlaylistPlayback = () => {
+        player.activateSource(playlist.service);
+    };
 
     const collaborators = playlist?.collaborators ?? [];
     const collapsed = !collaboratorsExpanded;
@@ -768,6 +778,7 @@ function Playlist() {
     const startPlaylist = async (startIndex: number, shuffled: boolean) => {
         if (songs.length === 0) return;
 
+        primePlaylistPlayback();
         const resolvedIndex = Math.max(0, Math.min(startIndex, songs.length - 1));
         const selected = queueItem(songs[resolvedIndex], playlist);
         const remainingSongs = shuffled
@@ -784,6 +795,7 @@ function Playlist() {
     };
 
     const toggleOrPlayPlaylist = () => {
+        primePlaylistPlayback();
         if (playlistIsActive) {
             player.togglePlay();
             return;
@@ -921,7 +933,15 @@ function Playlist() {
         <div className="playlist-page-container" ref={pageContainerRef}>
             <div ref={stickyHeaderRef} className={'playlist-page-header-sticky' + (stickyVisible ? ' visible' : '')}>
                 <div className="playlist-page-sticky-header-information">
-                    <div className='playlist-actions-play' onClick={toggleOrPlayPlaylist} title={playlistIsActive && playerState.isPlaying ? 'Pause playlist' : 'Play playlist'}>
+                    <div
+                        className='playlist-actions-play'
+                        onPointerDown={primePlaylistPlayback}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') primePlaylistPlayback();
+                        }}
+                        onClick={toggleOrPlayPlaylist}
+                        title={playlistIsActive && playerState.isPlaying ? 'Pause playlist' : 'Play playlist'}
+                    >
                         {playlistIsActive && playerState.isPlaying
                             ? <Pause className='playlist-actions-play-icon' />
                             : <Play className='playlist-actions-play-icon' />}
@@ -978,12 +998,21 @@ function Playlist() {
             </div>
             <div className='playlist-actions'>
                 <div className='playlist-actions-left'>
-                    <div className='playlist-actions-play' onClick={toggleOrPlayPlaylist} ref={playlistPlayRef} title={playlistIsActive && playerState.isPlaying ? 'Pause playlist' : 'Play playlist'}>
+                    <div
+                        className='playlist-actions-play'
+                        onPointerDown={primePlaylistPlayback}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') primePlaylistPlayback();
+                        }}
+                        onClick={toggleOrPlayPlaylist}
+                        ref={playlistPlayRef}
+                        title={playlistIsActive && playerState.isPlaying ? 'Pause playlist' : 'Play playlist'}
+                    >
                         {playlistIsActive && playerState.isPlaying
                             ? <Pause className='playlist-actions-play-icon' />
                             : <Play className='playlist-actions-play-icon' />}
                     </div>
-                    <div className={`playlist-actions-shuffle${playlistIsActive && playerState.shuffle ? ' active' : ''}`} onClick={() => void startPlaylist(Math.floor(Math.random() * songs.length), true)} title='Shuffle playlist'>
+                    <div className={`playlist-actions-shuffle${playlistIsActive && playerState.shuffle ? ' active' : ''}`} onPointerDown={primePlaylistPlayback} onClick={() => void startPlaylist(Math.floor(Math.random() * songs.length), true)} title='Shuffle playlist'>
                         <Shuffle className='playlist-actions-shuffle-icon' />
                     </div>
                 </div>
@@ -1039,7 +1068,10 @@ function Playlist() {
                                         }
                                         if (index !== -1) playSongFromPlaylist(song, index);
                                     }}
-                                    onPointerDown={(event) => startSongLongPress(event, song)}
+                                    onPointerDown={(event) => {
+                                        primePlaylistPlayback();
+                                        startSongLongPress(event, song);
+                                    }}
                                     onPointerMove={moveSongLongPress}
                                     onPointerUp={finishSongLongPress}
                                     onPointerCancel={finishSongLongPress}

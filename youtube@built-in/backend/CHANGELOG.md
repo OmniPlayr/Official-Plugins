@@ -4,6 +4,12 @@ All notable changes to `youtube@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-07-15
+
+### Fixed
+
+- Fixed YouTube streaming responses by avoiding approximate byte ranges, opening upstream streams before response headers are sent, and surfacing unavailable streams as proper errors.
+
 ## [1.0.3] - 2026-07-11
 
 ### Fixed

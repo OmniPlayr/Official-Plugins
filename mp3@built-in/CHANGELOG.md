@@ -4,6 +4,12 @@ All notable changes to `mp3@built-in` are documented here. This changelog follow
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-07-15
+
+### Fixed
+
+- Backend: Normalized encoded and account-prefixed local file IDs before path validation so valid local tracks resolve without weakening traversal protection.
+
 ## [2.0.0] - 2026-07-06
 
 - Switched imports to the new SDK.

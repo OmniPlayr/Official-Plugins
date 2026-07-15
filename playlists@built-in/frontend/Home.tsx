@@ -1,6 +1,6 @@
 import './styles/Home.css';
-import translations from '.';
-import { useEffect, useState } from 'react';
+import translations from './translations';
+import { useEffect, useMemo, useState } from 'react';
 import liked from './assets/liked.svg';
 import unknownArt from '../../assets/images/unknown-art.svg';
 import { LoaderCircle, Pause, Play } from 'lucide-react';
@@ -69,8 +69,8 @@ function prunePersistentPlaylistCaches() {
     }
 }
 
-function getCache() {
-    const key = getAccount() ?? 'no-account';
+function getCache(accountToken: string | null = getAccount()) {
+    const key = accountToken ?? 'no-account';
     let cache = homeCache.get(key);
 
     if (!cache) {
@@ -94,7 +94,7 @@ export function account(cache: HomeCache) {
     if (cache.account) return Promise.resolve(cache.account);
     if (cache.accountRequest) return cache.accountRequest;
 
-    cache.accountRequest = api('get_account', undefined, { account_id: 'me' })
+    cache.accountRequest = api('/accounts/me')
         .then((response) => {
             cache.account = response as UserAccount;
             return cache.account;
@@ -212,9 +212,37 @@ function getPlaylists(
             .filter((playlist) => playlist.service === 'spotify').length;
         const cachedYoutubeOffset = Array.from(allCachedPlaylists.values())
             .filter((playlist) => playlist.service === 'youtube').length;
+        let receivedPlaylist = false;
+        let fallbackLoaded = false;
+        let fallbackTimer: ReturnType<typeof window.setTimeout> | null = null;
+
+        const loadFallbackPlaylists = async () => {
+            if (receivedPlaylist || fallbackLoaded) return;
+            fallbackLoaded = true;
+
+            try {
+                const fallbackUser = cache.account ?? await account(cache);
+                onUser(fallbackUser);
+                const services = encodeURIComponent(HOME_PLAYLIST_SERVICES);
+                const response = await api(
+                    `/plugin/playlists/${fallbackUser.id}/cached?services=${services}&limit=${HOME_SERVICE_PLAYLIST_LIMIT}`,
+                ) as Playlist[];
+                response.forEach((playlist) => {
+                    playlists.set(playlistKey(playlist), playlist);
+                    allCachedPlaylists.set(playlistKey(playlist), playlist);
+                });
+                cache.playlists = Array.from(allCachedPlaylists.values());
+                onUpdate(cache.playlists);
+            } catch {
+
+            }
+        };
 
         try {
             const services = encodeURIComponent(HOME_PLAYLIST_SERVICES);
+            fallbackTimer = window.setTimeout(() => {
+                void loadFallbackPlaylists();
+            }, 2500);
             const response = await api(
                 `/plugin/playlists/${userId}/stream?services=${services}&limit=${HOME_SERVICE_PLAYLIST_LIMIT}&spotify_offset=${cachedSpotifyOffset}&youtube_offset=${cachedYoutubeOffset}`,
                 undefined,
@@ -238,14 +266,11 @@ function getPlaylists(
                     return;
                 }
                 if (event.type === 'playlist' && event.playlist) {
+                    receivedPlaylist = true;
                     playlists.set(playlistKey(event.playlist), event.playlist);
                     allCachedPlaylists.set(playlistKey(event.playlist), event.playlist);
-                    if (event.playlist.service === 'local') {
-                        cache.playlists = Array.from(allCachedPlaylists.values());
-                        onUpdate(
-                            cache.playlists
-                        );
-                    }
+                    cache.playlists = Array.from(allCachedPlaylists.values());
+                    onUpdate(cache.playlists);
                 } else if (event.type === 'page') {
                     cache.playlists = Array.from(allCachedPlaylists.values());
                     onUpdate(cache.playlists);
@@ -265,15 +290,11 @@ function getPlaylists(
             }
             consumeLine(buffer);
         } catch {
-            const fallbackUser = await account(cache);
-            onUser(fallbackUser);
-            const response = await api(`/plugin/playlists/${fallbackUser.id}`) as Playlist[];
-            response.forEach((playlist) => {
-                playlists.set(playlistKey(playlist), playlist);
-                allCachedPlaylists.set(playlistKey(playlist), playlist);
-            });
-            cache.playlists = Array.from(allCachedPlaylists.values());
-            onUpdate(cache.playlists);
+            await loadFallbackPlaylists();
+        } finally {
+            if (fallbackTimer !== null) {
+                window.clearTimeout(fallbackTimer);
+            }
         }
 
         cache.playlists = Array.from(allCachedPlaylists.values());
@@ -288,7 +309,8 @@ function getPlaylists(
 
 function Home() {
     const { t } = translations.useTranslation();
-    const [cache] = useState(getCache);
+    const [accountKey, setAccountKey] = useState(() => getAccount() ?? 'no-account');
+    const cache = useMemo(() => getCache(accountKey === 'no-account' ? null : accountKey), [accountKey]);
     const [userAccount, setUserAccount] = useState<UserAccount | null>(cache.account ?? null);
     const [descriptionId] = useState(() => Math.floor(Math.random() * 6) + 1);
     const [playlists, setPlaylists] = useState<Playlist[] | null>(cache.playlists ?? null);
@@ -299,11 +321,64 @@ function Home() {
     const [loadingPlaylistKey, setLoadingPlaylistKey] = useState<string | null>(null);
 
     useEffect(() => {
+        const updateAccountKey = () => {
+            setAccountKey(getAccount() ?? 'no-account');
+        };
+
+        window.addEventListener('account-switched', updateAccountKey);
+        window.addEventListener('storage', updateAccountKey);
+        const interval = window.setInterval(updateAccountKey, 1000);
+
+        return () => {
+            window.removeEventListener('account-switched', updateAccountKey);
+            window.removeEventListener('storage', updateAccountKey);
+            window.clearInterval(interval);
+        };
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
         const updatePlaylists = (nextPlaylists: Playlist[]) => {
+            if (cancelled) return;
             setPlaylists(nextPlaylists);
         };
-        getPlaylists('me', cache, updatePlaylists, setUserAccount).then(updatePlaylists);
+        const updateUser = (nextUser: UserAccount) => {
+            if (cancelled) return;
+            setUserAccount(nextUser);
+        };
+
+        setUserAccount(cache.account ?? null);
+        setPlaylists(cache.playlists ?? null);
+        account(cache).then(updateUser).catch(() => {});
+        getPlaylists('me', cache, updatePlaylists, updateUser).then(updatePlaylists);
+
+        return () => {
+            cancelled = true;
+        };
     }, [cache]);
+
+    useEffect(() => {
+        if (!userAccount || playlists?.length) return;
+
+        let cancelled = false;
+        const timer = window.setTimeout(() => {
+            const services = encodeURIComponent(HOME_PLAYLIST_SERVICES);
+            void api(
+                `/plugin/playlists/${userAccount.id}/cached?services=${services}&limit=${HOME_SERVICE_PLAYLIST_LIMIT}`,
+            )
+                .then(response => {
+                    if (cancelled || !Array.isArray(response) || response.length === 0) return;
+                    cache.playlists = response as Playlist[];
+                    setPlaylists(response as Playlist[]);
+                })
+                .catch(() => {});
+        }, 1000);
+
+        return () => {
+            cancelled = true;
+            window.clearTimeout(timer);
+        };
+    }, [cache, playlists, userAccount]);
 
     useEffect(() => player.subscribe(() => {
         setPlayerState({
@@ -324,6 +399,12 @@ function Home() {
     const localPlaylists = (playlists?.filter(p => p.service === 'local') ?? []).slice(0, 10);
     const localPlaylistsAll = (playlists?.filter(p => p.service === 'local') ?? []);
 
+    useEffect(() => {
+        if (spotifyPlaylistsAll.length > 0) {
+            player.activateSource('spotify');
+        }
+    }, [spotifyPlaylistsAll.length]);
+
     const activeUser = userAccount ?? { id: '', name: '' };
     const currentPlaylist = playlists?.find(playlist => playlistQueueName(playlist) === playerState.queueName) ?? null;
 
@@ -334,6 +415,7 @@ function Home() {
             return;
         }
 
+        player.activateSource(playlist.service);
         setLoadingPlaylistKey(key);
         try {
             let started = false;
@@ -363,6 +445,10 @@ function Home() {
         }
     };
 
+    const primePlaylistPlayback = (playlist: Playlist) => {
+        player.activateSource(playlist.service);
+    };
+
     const renderPlaylist = (playlist: Playlist) => {
         const key = playlistKey(playlist);
         const isActive = playerState.queueName === playlistQueueName(playlist);
@@ -381,6 +467,15 @@ function Home() {
                         type='button'
                         aria-label={isActive && playerState.isPlaying ? `Pause ${playlist.name}` : `Play ${playlist.name}`}
                         disabled={isLoading}
+                        onPointerDown={(event) => {
+                            event.stopPropagation();
+                            primePlaylistPlayback(playlist);
+                        }}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                                primePlaylistPlayback(playlist);
+                            }
+                        }}
                         onClick={(event) => {
                             event.stopPropagation();
                             void playPlaylist(playlist);

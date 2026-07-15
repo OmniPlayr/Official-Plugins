@@ -134,7 +134,7 @@ modify(PLUGIN_ID, selector, async el => {
                 ...(artist ? { artist } : {}),
             })
             const query = params.size ? `?${params}&no_cache=true` : ''
-            api(`/plugin/album/${encodeURIComponent(artist)}${query}`).then(res => {
+            api(`/plugin/album/${encodeURIComponent(album)}${query}`).then(res => {
                 albumCache.set(album + "_" + artist, res as any[])
             }).catch(() => {})
         })

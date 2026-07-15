@@ -9,7 +9,7 @@ from .services import soundcloud as soundcloud_service
 from .services import spotify as spotify_service
 from .services import youtube as youtube_service
 
-from omniplayr.plugins import list_account_summaries, get_account, get_account_summary, get_plugin_config, api, get_plugin, has_function, verify_auth, get_token_user, log
+from omniplayr.plugins import get_account, get_plugin_config, api, get_plugin, has_function, verify_auth, get_token_user, log
 
 PLUGIN_KEY = "playlists@built-in"
 SUPPORTED_SERVICES = {"local", "spotify", "soundcloud", "youtube"}
@@ -17,6 +17,8 @@ DEFAULT_SERVICES = "local,spotify,soundcloud,youtube"
 _db = None
 _cache_lock = RLock()
 _refreshing = set()
+_account_summary_cache = {"expires_at": 0.0, "accounts": None}
+_ACCOUNT_SUMMARY_CACHE_SECONDS = 30
 
 
 def _config(key, default=None):
@@ -154,10 +156,40 @@ def _start_refresh(key, target, *args) -> None:
 def init(db) -> None:
     global _db
     _db = db
+
+
+def _account_summary_from_row(row):
+    if not row:
+        return None
+    return {"id": row.get("id"), "name": row.get("name")}
+
+
+def _get_account_summary(account_id: int):
+    if not _db:
+        return None
+    row = _db.fetch_one("accounts", where={"id": account_id}, columns=["id", "name"])
+    return _account_summary_from_row(row)
+
+
+def _list_account_summaries():
+    if not _db:
+        return []
+
+    now = time.time()
+    cached = _account_summary_cache.get("accounts")
+    if cached is not None and float(_account_summary_cache.get("expires_at") or 0) > now:
+        return cached
+
+    rows = _db.fetch("accounts", columns=["id", "name"], order_by="id")
+    accounts = [_account_summary_from_row(row) for row in rows]
+    accounts = [account for account in accounts if account]
+    _account_summary_cache["accounts"] = accounts
+    _account_summary_cache["expires_at"] = now + _ACCOUNT_SUMMARY_CACHE_SECONDS
+    return accounts
     
 def create_liked_playlist(user_id: int):
     log(f"Creating liked playlist for user_id={user_id}", "debug")
-    user = get_account_summary(user_id)
+    user = _get_account_summary(user_id)
     if not user:
         log(f"User id={user_id} not found", "debug")
         return
@@ -268,7 +300,7 @@ def _resolve_options(limit, offset, services):
 def _get_local_playlist_summaries(user_id: int, token_user_id: int, include_private: bool, limit: int, offset: int):
     create_liked_playlist(user_id)
     local_playlists = list_playlists(user_id, include_private)[offset:offset + limit]
-    accounts = {account["id"]: account for account in list_account_summaries()}
+    accounts = {account["id"]: account for account in _list_account_summaries()}
 
     for playlist in local_playlists:
         playlist["service"] = "local"
@@ -359,7 +391,7 @@ def _get_youtube_page(user_id: int, limit: int, offset: int, local_owner, refres
 
 @api.get("/playlists/{user_id}")
 def get_playlists(
-    user_id: int,
+    user_id: str,
     limit: int | None = Query(None),
     offset: int | None = Query(None),
     services: str | None = Query(None),
@@ -377,15 +409,16 @@ def get_playlists(
     if not token_user_id:
         log(f"GET /playlists/{user_id}: account token resolved to no account", "debug")
         raise HTTPException(status_code=401, detail="Unauthorized")
+    resolved_user_id = _resolve_user_id(user_id, token_user_id)
     log(f"GET /playlists/{user_id}: auth ok, getting playlists", "debug")
-    user = get_account_summary(user_id)
+    user = _get_account_summary(resolved_user_id)
     if not user:
         log(f"GET /playlists/{user_id}: user not found", "debug")
         raise HTTPException(status_code=404, detail="User not found")
     
     limit, offset, requested_services = _resolve_options(limit, offset, services)
     
-    include_private = token_user_id == user_id
+    include_private = token_user_id == resolved_user_id
     if include_private:
         log(f"GET /playlists/{user_id}: match ok, including private playlists", "debug")
     
@@ -393,24 +426,24 @@ def get_playlists(
 
     if "local" in requested_services:
         log(f"GET /playlists/{user_id}: getting local playlists", "debug")
-        response.extend(_get_local_playlist_summaries(user_id, token_user_id, include_private, limit, offset))
+        response.extend(_get_local_playlist_summaries(resolved_user_id, token_user_id, include_private, limit, offset))
 
     if "spotify" in requested_services:
-        spotify_playlists, _ = _get_spotify_page(user_id, limit, offset, user)
+        spotify_playlists, _ = _get_spotify_page(resolved_user_id, limit, offset, user)
         spotify_playlists = spotify_playlists or []
         if not include_private:
             spotify_playlists = [playlist for playlist in spotify_playlists if not playlist["private"]]
         response.extend(spotify_playlists)
 
     if "soundcloud" in requested_services:
-        soundcloud_playlists, _ = _get_soundcloud_page(user_id, limit, offset, user)
+        soundcloud_playlists, _ = _get_soundcloud_page(resolved_user_id, limit, offset, user)
         soundcloud_playlists = soundcloud_playlists or []
         if not include_private:
             soundcloud_playlists = [playlist for playlist in soundcloud_playlists if not playlist["private"]]
         response.extend(soundcloud_playlists)
 
     if "youtube" in requested_services:
-        youtube_playlists, _ = _get_youtube_page(user_id, limit, offset, user)
+        youtube_playlists, _ = _get_youtube_page(resolved_user_id, limit, offset, user)
         youtube_playlists = youtube_playlists or []
         if not include_private:
             youtube_playlists = [playlist for playlist in youtube_playlists if not playlist["private"]]
@@ -418,6 +451,54 @@ def get_playlists(
     
     log(f"GET /playlists/{user_id}: returning response", "debug")
     
+    return response
+
+
+@api.get("/playlists/{user_id}/cached")
+def get_cached_playlists(
+    user_id: str,
+    limit: int | None = Query(None),
+    offset: int | None = Query(None),
+    services: str | None = Query(None),
+    auth=Depends(verify_auth),
+    x_account_token: str = Header(..., alias="X-Account-Token"),
+):
+    if not auth or not x_account_token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    token_user_id = get_token_user(x_account_token)
+    if not token_user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if user_id.lower() == "me":
+        resolved_user_id = token_user_id
+    else:
+        try:
+            resolved_user_id = int(user_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid user ID")
+
+    user = _get_account_summary(resolved_user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    limit, offset, requested_services = _resolve_options(limit, offset, services)
+    include_private = token_user_id == resolved_user_id
+    response = []
+
+    if "local" in requested_services:
+        response.extend(_get_local_playlist_summaries(resolved_user_id, token_user_id, include_private, limit, offset))
+
+    for service in ("spotify", "soundcloud", "youtube"):
+        if service not in requested_services:
+            continue
+        cached = _read_cached_page(resolved_user_id, service, limit, offset)
+        if cached is None:
+            continue
+        if not include_private:
+            cached = [playlist for playlist in cached if not playlist.get("private", False)]
+        response.extend(cached)
+
     return response
 
 
@@ -500,7 +581,7 @@ def _ordered_requested_playlist_songs(requested_songs, playlist_songs):
 
 def _local_playlist_song_events(playlist_id: int, account_id: int):
     rows = _db.fetch("playlist_songs", where={"playlist_id": playlist_id}, order_by="position")
-    accounts = {account["id"]: account for account in list_account_summaries()}
+    accounts = {account["id"]: account for account in _list_account_summaries()}
 
     for row in rows:
         source_type = row.get("source_type")
@@ -572,7 +653,7 @@ def stream_playlists(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid user ID")
 
-    user = get_account_summary(resolved_user_id)
+    user = _get_account_summary(resolved_user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -856,7 +937,7 @@ def stream_playlist(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid user ID")
 
-    user = get_account_summary(resolved_user_id)
+    user = _get_account_summary(resolved_user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -1032,7 +1113,7 @@ def get_playlist_queue_songs(
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     resolved_user_id = _resolve_user_id(user_id, token_user_id)
-    user = get_account_summary(resolved_user_id)
+    user = _get_account_summary(resolved_user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -1131,7 +1212,7 @@ def get_playlist_queue_songs(
     }
     
 @api.get("/playlists/{user_id}/{playlist_id}")
-def get_playlist(user_id: int, playlist_id: str, auth=Depends(verify_auth), x_account_token: str = Header(..., alias="X-Account-Token")):
+def get_playlist(user_id: str, playlist_id: str, auth=Depends(verify_auth), x_account_token: str = Header(..., alias="X-Account-Token")):
     log(f"GET /playlists/{user_id}/{playlist_id} requested", "debug")
     if not auth:
         log(f"GET /playlists/{user_id}/{playlist_id}: auth check failed", "debug")
@@ -1143,6 +1224,7 @@ def get_playlist(user_id: int, playlist_id: str, auth=Depends(verify_auth), x_ac
     if not token_user_id:
         log(f"GET /playlists/{user_id}/{playlist_id}: account token resolved to no account", "debug")
         raise HTTPException(status_code=401, detail="Unauthorized")
+    resolved_user_id = _resolve_user_id(user_id, token_user_id)
 
     if ":" in playlist_id:
         raw_playlist_id, service = playlist_id.rsplit(":", 1)
@@ -1156,20 +1238,20 @@ def get_playlist(user_id: int, playlist_id: str, auth=Depends(verify_auth), x_ac
     log(f"GET /playlists/{user_id}/{playlist_id}: auth ok, getting {service} playlist", "debug")
 
     if service == "spotify":
-        playlist = get_spotify_playlist(raw_playlist_id, user_id)
-        if not playlist or (playlist["private"] and token_user_id != user_id):
+        playlist = get_spotify_playlist(raw_playlist_id, resolved_user_id)
+        if not playlist or (playlist["private"] and token_user_id != resolved_user_id):
             raise HTTPException(status_code=404, detail="Playlist not found")
         return playlist
 
     if service == "soundcloud":
-        playlist = get_soundcloud_playlist(raw_playlist_id, user_id)
-        if not playlist or (playlist["private"] and token_user_id != user_id):
+        playlist = get_soundcloud_playlist(raw_playlist_id, resolved_user_id)
+        if not playlist or (playlist["private"] and token_user_id != resolved_user_id):
             raise HTTPException(status_code=404, detail="Playlist not found")
         return playlist
 
     if service == "youtube":
-        playlist = get_youtube_playlist(raw_playlist_id, user_id)
-        if not playlist or (playlist["private"] and token_user_id != user_id):
+        playlist = get_youtube_playlist(raw_playlist_id, resolved_user_id)
+        if not playlist or (playlist["private"] and token_user_id != resolved_user_id):
             raise HTTPException(status_code=404, detail="Playlist not found")
         return playlist
 
@@ -1181,11 +1263,11 @@ def get_playlist(user_id: int, playlist_id: str, auth=Depends(verify_auth), x_ac
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid local playlist ID")
 
-    playlist = _db.fetch_one("playlists", where={"id": local_playlist_id, "owner_id": user_id})
+    playlist = _db.fetch_one("playlists", where={"id": local_playlist_id, "owner_id": resolved_user_id})
     if not playlist:
         log(f"GET /playlists/{user_id}/{playlist_id}: playlist not found", "debug")
         raise HTTPException(status_code=404, detail="Playlist not found")
-    if playlist.get("private") and token_user_id != user_id:
+    if playlist.get("private") and token_user_id != resolved_user_id:
         raise HTTPException(status_code=404, detail="Playlist not found")
 
     playlist["service"] = "local"

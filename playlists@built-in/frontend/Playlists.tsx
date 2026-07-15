@@ -1,7 +1,7 @@
 import { api, getAccount, navigate, player } from "@omniplayr/plugins";
 import { useParams } from "react-router-dom"
 import './styles/Playlists.css';
-import translations from ".";
+import translations from "./translations";
 import { useEffect, useState } from "react";
 import liked from './assets/liked.svg';
 import unknownArt from '../../assets/images/unknown-art.svg';
@@ -185,6 +185,12 @@ function Playlists() {
         });
     }), []);
 
+    useEffect(() => {
+        if (service === 'spotify' && playlists?.some(playlist => playlist.service === 'spotify')) {
+            player.activateSource('spotify');
+        }
+    }, [playlists, service]);
+
     const playPlaylist = async (playlist: Playlist) => {
         const key = playlistKey(playlist);
         if (playerState.queueName === playlistQueueName(playlist)) {
@@ -192,6 +198,7 @@ function Playlists() {
             return;
         }
 
+        player.activateSource(playlist.service);
         setLoadingPlaylistKey(key);
         try {
             let started = false;
@@ -239,6 +246,15 @@ function Playlists() {
                         type='button'
                         aria-label={isActive && playerState.isPlaying ? `Pause ${playlist.name}` : `Play ${playlist.name}`}
                         disabled={isLoading}
+                        onPointerDown={(event) => {
+                            event.stopPropagation();
+                            player.activateSource(playlist.service);
+                        }}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                                player.activateSource(playlist.service);
+                            }
+                        }}
                         onClick={(event) => {
                             event.stopPropagation();
                             void playPlaylist(playlist);

@@ -1,4 +1,5 @@
 from pathlib import Path
+from urllib.parse import unquote
 
 from omniplayr.plugins import get_plugin_config
 
@@ -19,11 +20,17 @@ EXTENSION_CONTENT_TYPES = {
 
 
 def resolve_path(song_id: str, account_id: int) -> Path:
-    decoded = song_id.replace("%2F", "/").replace("%5C", "")
+    decoded = unquote(song_id).replace("\\", "")
 
     user_dir = (MUSIC_DIR / str(account_id)).resolve()
     if not str(user_dir).startswith(str(MUSIC_DIR.resolve())):
         raise PermissionError("Path traversal detected")
+
+    account_prefix = f"{account_id}/"
+    if decoded == str(account_id):
+        decoded = ""
+    elif decoded.startswith(account_prefix):
+        decoded = decoded[len(account_prefix):]
 
     path = (user_dir / decoded).resolve()
 

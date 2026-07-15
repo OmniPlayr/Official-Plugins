@@ -4,15 +4,16 @@ import {
     type SourcePlugin,
     type TrackMetadata
 } from '@omniplayr/plugins';
-import { sdkPlay, sdkPause, sdkResume, sdkSeek, sdkSetVolume, sdkActivateElement, onStateChange, getState, waitReady as sdkWaitReady } from './sdk';
+import { sdkPlay, sdkPause, sdkResume, sdkSeek, sdkSetVolume, sdkPrimeActivation, onStateChange, getState, sdkReconnectNow } from './sdk';
 import type { SpotifyState } from './sdk';
 
 const VOLUME_STORAGE_KEY = 'player_volume';
-const SPOTIFY_STATE_TIMEOUT_MS = 12000;
+const SPOTIFY_STATE_TIMEOUT_MS = 45000;
 
 type PlaybackCallbacks = {
     onMetadata: (meta: TrackMetadata) => void;
     onReady: () => void;
+    onEnded: () => void;
     onStateChange: () => void;
 };
 
@@ -30,7 +31,8 @@ function timeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T
 
 function waitForSpotifyTrackState(
     songId: string,
-    onReadyState: (state: SpotifyState) => void
+    onReadyState: (state: SpotifyState) => void,
+    requirePlaying = false
 ): Promise<void> {
     return new Promise<void>((resolve, reject) => {
         let unsub: (() => void) | null = null;
@@ -41,6 +43,7 @@ function waitForSpotifyTrackState(
 
             const track = state.track_window?.current_track;
             if (track?.id !== songId) return;
+            if (requirePlaying && state.paused) return;
 
             settled = true;
             clearTimeout(timer);
@@ -82,6 +85,8 @@ export default class SpotifySourcePlugin implements SourcePlugin {
     private _volume = 1;
     private transientVolumeActive = false;
     private pendingSongId: string | null = null;
+    private activeSongId: string | null = null;
+    private endedSent = false;
     private playbackCallbacks: PlaybackCallbacks | null = null;
 
     constructor() {
@@ -106,15 +111,73 @@ export default class SpotifySourcePlugin implements SourcePlugin {
         }
     }
 
+    private detachStateListener() {
+        this.unsubscribe?.();
+        this.unsubscribe = null;
+    }
+
+    private attachStateListener(callbacks: PlaybackCallbacks) {
+        this.unsubscribe?.();
+
+        this.unsubscribe = onStateChange(state => {
+            if (!state) {
+                if (this.activeSongId) {
+                    this._isPlaying = false;
+                    this.stopTicker();
+                    callbacks.onStateChange();
+                }
+                return;
+            }
+
+            const trackId = state.track_window?.current_track?.id ?? null;
+            if (this.activeSongId && trackId && trackId !== this.activeSongId) return;
+
+            const previousPosition = this.lastPosition;
+            const duration = state.duration || 0;
+
+            this.lastPosition = state.position;
+            this.lastPositionAt = Date.now();
+            this._isPlaying = !state.paused;
+
+            if (!state.paused) {
+                this.endedSent = false;
+                this.startTicker(callbacks.onStateChange);
+            } else {
+                this.stopTicker();
+            }
+
+            const reachedEnd =
+                duration > 0 &&
+                state.paused &&
+                (
+                    state.position >= duration - 750 ||
+                    (state.position <= 1000 && previousPosition >= duration - 3000)
+                );
+
+            if (reachedEnd && !this.endedSent) {
+                this.endedSent = true;
+                this._isPlaying = false;
+                callbacks.onEnded();
+            }
+
+            callbacks.onStateChange();
+        });
+    }
+
     async play(
         songId: string,
         _extra: Record<string, unknown> | undefined,
         autoplay: boolean,
         callbacks: PlaybackCallbacks
     ) {
-        this.unsubscribe?.();
+        this.detachStateListener();
         this.stopTicker();
         this.playbackCallbacks = callbacks;
+        this.activeSongId = songId;
+        this.endedSent = false;
+        this.lastPosition = 0;
+        this.lastPositionAt = Date.now();
+        this._isPlaying = false;
 
         if (!autoplay) {
             const encoded = encodeURIComponent(songId);
@@ -128,21 +191,22 @@ export default class SpotifySourcePlugin implements SourcePlugin {
         }
 
         this.pendingSongId = null;
+        this.attachStateListener(callbacks);
 
-        try {
-            await timeout(
-                sdkWaitReady(),
-                SPOTIFY_STATE_TIMEOUT_MS,
-                'Timed out waiting for Spotify Web Playback SDK readiness'
-            );
-
+        const startSpotifyPlayback = async (message: string) => {
             await timeout(
                 sdkPlay(songId),
                 SPOTIFY_STATE_TIMEOUT_MS,
-                'Timed out asking Spotify to start playback'
+                message
             );
+        };
+
+        try {
+            await startSpotifyPlayback('Timed out asking Spotify to start playback');
         } catch (error) {
-            console.error('[spotify@built-in] Spotify is unavailable or failed to start playback.', error);
+            this.detachStateListener();
+            this.stopTicker();
+            this._isPlaying = false;
             throw error;
         }
 
@@ -165,45 +229,32 @@ export default class SpotifySourcePlugin implements SourcePlugin {
         };
 
         try {
-            await waitForSpotifyTrackState(songId, applyReadyState);
+            await waitForSpotifyTrackState(songId, applyReadyState, true);
         } catch (error) {
             if (!(error instanceof Error) || error.message !== 'Timed out waiting for Spotify playback state') {
                 throw error;
             }
 
             await timeout(
-                sdkWaitReady(),
+                sdkReconnectNow(),
                 SPOTIFY_STATE_TIMEOUT_MS,
                 'Timed out waiting for Spotify Web Playback SDK to reconnect'
             );
-            await timeout(
-                sdkPlay(songId),
-                SPOTIFY_STATE_TIMEOUT_MS,
-                'Timed out retrying Spotify playback'
-            );
-            await waitForSpotifyTrackState(songId, applyReadyState);
+            try {
+                await startSpotifyPlayback('Timed out retrying Spotify playback');
+                await waitForSpotifyTrackState(songId, applyReadyState, true);
+            } catch (retryError) {
+                this.detachStateListener();
+                this.stopTicker();
+                this._isPlaying = false;
+                throw retryError;
+            }
         }
 
         await sdkSetVolume(this._volume);
-
-        this.unsubscribe = onStateChange(state => {
-            if (!state) return;
-
-            this.lastPosition = state.position;
-            this.lastPositionAt = Date.now();
-            this._isPlaying = !state.paused;
-
-            if (!state.paused) {
-                this.startTicker(callbacks.onStateChange);
-            } else {
-                this.stopTicker();
-            }
-
-            callbacks.onStateChange();
-        });
     }
 
-    pause() { sdkPause().catch(error => console.warn('[spotify@built-in] Failed to pause Spotify playback.', error)); }
+    pause() { sdkPause({ silentIfMissing: true }).catch(error => console.warn('[spotify@built-in] Failed to pause Spotify playback.', error)); }
     resume() {
         if (this.pendingSongId && this.playbackCallbacks) {
             const songId = this.pendingSongId;
@@ -214,7 +265,7 @@ export default class SpotifySourcePlugin implements SourcePlugin {
         }
         sdkResume().catch(error => console.warn('[spotify@built-in] Failed to resume Spotify playback.', error));
     }
-    activate() { sdkActivateElement()?.catch(error => console.warn('[spotify@built-in] Failed to activate Spotify player.', error)); }
+    activate() { sdkPrimeActivation().catch(error => console.warn('[spotify@built-in] Failed to activate Spotify player.', error)); }
     seek(seconds: number) { sdkSeek(seconds * 1000).catch(error => console.warn('[spotify@built-in] Failed to seek Spotify playback.', error)); }
 
     setVolume(fraction: number) {
@@ -248,10 +299,13 @@ export default class SpotifySourcePlugin implements SourcePlugin {
         return this._isPlaying;
     }
 
-    destroy() {
-        this.unsubscribe?.();
+    destroy(options?: { transferred?: boolean }) {
+        this.detachStateListener();
         this.stopTicker();
         this.pendingSongId = null;
-        sdkPause().catch(error => console.warn('[spotify@built-in] Failed to pause Spotify playback during cleanup.', error));
+        this.activeSongId = null;
+        this.endedSent = false;
+        if (options?.transferred) return;
+        sdkPause({ silentIfMissing: true }).catch(error => console.warn('[spotify@built-in] Failed to pause Spotify playback during cleanup.', error));
     }
 }

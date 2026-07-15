@@ -66,7 +66,7 @@ Priority queue items and next-up items can be reordered within their own section
 | `Dashboard.dashboard-hor` | Adds the queue side tab |
 | `Player.plugin-target-before-volume-option` | Adds the queue toggle button |
 
-The side tab shares width and active-tab state with other compatible side-tab plugins, including `lyrics@built-in`.
+The side tab shares width and active-tab state with other compatible side-tab plugins, including `lyrics@built-in` and `devices@built-in`.
 
 ---
 

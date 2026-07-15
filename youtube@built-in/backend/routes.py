@@ -243,6 +243,41 @@ def _api_playlist(item: dict, connected_user: dict | None = None) -> dict:
     }
 
 
+def _api_playlists(
+    account_id: int,
+    limit: int,
+    offset: int,
+    connected_user: dict | None = None,
+    timeout_seconds: int = 10,
+) -> list[dict] | None:
+    playlists = []
+    page_token = None
+    target = max(1, limit + offset)
+
+    while len(playlists) < target:
+        params = {
+            "part": "snippet,contentDetails,status",
+            "mine": "true",
+            "maxResults": min(50, target - len(playlists)),
+        }
+        if page_token:
+            params["pageToken"] = page_token
+
+        data = _youtube_api_get(account_id, "playlists", params, timeout_seconds)
+        if data is None:
+            return None
+
+        for item in data.get("items") or []:
+            if isinstance(item, dict):
+                playlists.append(_api_playlist(item, connected_user))
+
+        page_token = data.get("nextPageToken")
+        if not page_token:
+            break
+
+    return playlists[offset:offset + limit]
+
+
 def _iso_duration_seconds(value: str | None) -> int | None:
     match = re.fullmatch(r"P(?:(\d+)D)?T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", str(value or ""))
     if not match:
@@ -524,12 +559,23 @@ def get_playlists(
     try:
         collected = client.get_library_playlists(limit=None)
     except Exception as error:
+        playlists = _api_playlists(user_id, limit, offset, connected_user, timeout_seconds)
+        if playlists is None:
+            log(
+                f"YouTube Music library playlist request failed for account {user_id}: "
+                f"{type(error).__name__}: {error}",
+                "warning",
+            )
+            return None
+
         log(
-            f"YouTube Music library playlist request failed for account {user_id}: "
-            f"{type(error).__name__}: {error}",
-            "warning",
+            f"YouTube Music library playlist request failed for account {user_id}; "
+            f"using YouTube Data API fallback: {type(error).__name__}: {error}",
+            "debug",
         )
-        return None
+        row = _get_row(user_id)
+        _sync_oauth_file_to_db(user_id, _oauth_file_path(user_id) if row else None)
+        return playlists
 
     playlists = []
     for item in collected or []:

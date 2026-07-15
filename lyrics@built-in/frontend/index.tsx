@@ -1,7 +1,8 @@
-import { definePluginTranslations, modify, useIsMobile } from "@omniplayr/plugins";
+import { modify, useIsMobile } from "@omniplayr/plugins";
 import { createRoot, type Root } from "react-dom/client";
 import LyricsView from "./LyricsView";
 import LyricsButton from "./LyricsButton";
+import translations from './translations';
 
 const plugin_key = "lyrics@built-in";
 
@@ -9,7 +10,9 @@ const roots = new WeakMap<Element, Root>();
 let desktopLyricsRoot: Root | null = null;
 let mobileLyricsRoot: Root | null = null;
 let resizeFrame: number | null = null;
-const translations = definePluginTranslations(plugin_key);
+type RootContainer = Element & {
+    __omniplayrReactRoot?: Root;
+};
 
 function DesktopLyricsView() {
     const isMobile = useIsMobile();
@@ -28,11 +31,13 @@ function MobileLyricsView() {
 }
 
 function getRoot(container: Element) {
-    let root = roots.get(container);
+    const rootContainer = container as RootContainer;
+    let root = rootContainer.__omniplayrReactRoot ?? roots.get(container);
 
     if (!root) {
         try {
             root = createRoot(container);
+            rootContainer.__omniplayrReactRoot = root;
             roots.set(container, root);
         } catch (e) {
             console.error('Failed to create root for plugin', plugin_key, e);

@@ -4,6 +4,12 @@ All notable changes to `soundcloud@built-in` are documented here. This changelog
 
 ## [Unreleased]
 
+## [2.1.2] - 2026-07-13
+
+### Fixed
+
+- Backend: Invalid SoundCloud metadata now reports missing media cleanly instead of returning a broken playback response.
+
 ## [2.1.1] - 2026-07-08
 
 ### Changed

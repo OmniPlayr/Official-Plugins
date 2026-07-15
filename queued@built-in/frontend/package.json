@@ -2,7 +2,7 @@
     "id": "queued@built-in",
     "name": "queued",
     "author": "built-in",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "View your queue and rearrange it with this plugin.",
     "type": "frontend",
     "repository": "https://github.com/OmniPlayr/Official-Plugins",

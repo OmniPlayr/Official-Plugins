@@ -5,15 +5,34 @@ import Playlist from "./Playlist";
 import {
     modify,
     registerRoute,
-    definePluginTranslations,
 } from "@omniplayr/plugins";
 import Playlists from "./Playlists";
+import translations from './translations';
 
 const plugin_key = "playlists@built-in";
 
 const roots = new WeakMap<Element, Root>();
 
-const translations = definePluginTranslations(plugin_key);
+type RootContainer = Element & {
+    __omniplayrReactRoot?: Root;
+};
+
+function getRoot(container: Element) {
+    const rootContainer = container as RootContainer;
+    let root = rootContainer.__omniplayrReactRoot ?? roots.get(container);
+
+    if (!root) {
+        try {
+            root = createRoot(container);
+            rootContainer.__omniplayrReactRoot = root;
+            roots.set(container, root);
+        } catch (e) {
+            console.error('Failed to create root for plugin', plugin_key, e);
+        }
+    }
+
+    return root;
+}
 
 modify(plugin_key, 'Dashboard.dashboard-home', el => {
     el.setAttribute("data-plugin-hooked", "");
@@ -26,17 +45,8 @@ modify(plugin_key, 'Dashboard.dashboard-home', el => {
         el.appendChild(container);
     }
 
-    let root = roots.get(container);
+    const root = getRoot(container);
 
-    if (!root) {
-        try {
-            root = createRoot(container);
-            roots.set(container, root);
-        } catch (e) {
-            console.error('Failed to create root for plugin', plugin_key, e);
-        }
-    }
-    
     if (root) {
         root.render(<Home />);
     }

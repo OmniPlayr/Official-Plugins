@@ -4,6 +4,15 @@ All notable changes to `queued@built-in` are documented here. This changelog fol
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-07-15
+
+### Changed
+
+- Added Dutch and English plugin-local translations.
+- Improved side-tab transitions, mobile behavior, and queue state updates.
+- Added `devices@built-in` to the shared side-tab active state.
+- Collapsed the queue side-tab root when the queue is closed.
+
 ## [1.0.1] - 2026-07-11
 
 ### Changed
