@@ -1,0 +1,112 @@
+.sidebar,
+.info-bar-container {
+    transition: width 0.3s ease-in-out, max-width 0.3s ease-in-out, min-width 0.3s ease-in-out, padding 0.3s ease-in-out, overflow 0.3s ease-in-out, margin-left 0.3s ease-in-out;
+}
+
+.dashboard-main:has(.fullscreen-lyrics) {
+    padding: 0px;
+    margin-left: 0px;
+}
+
+.fullscreen-lyrics {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: 100%;
+    padding: 20px;
+    justify-content: center;
+}
+
+.fullscreen-lyrics-container {
+    display: flex;
+    flex-direction: row;
+    width: 80%;
+    height: 80%;
+}
+
+.fullscreen-lyrics .lyrics-container {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.lyrics-player-song {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.lyrics-player-song-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--lyrics-text-a0);
+}
+
+.lyrics-player-song-artist {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--lyrics-text-a40);
+}
+
+.fullscreen-lyrics-player {
+    flex: 1;
+}
+
+#root:has(.dashboard-main .fullscreen-lyrics) .sidebar,
+#root:has(.dashboard-main .fullscreen-lyrics) .info-bar-container {
+    width: 0px !important;
+    max-width: 0px !important;
+    min-width: 0px !important;
+    padding: 0px !important;
+    border: none;
+    overflow: hidden;
+    margin-left: 0px;
+}
+
+.full-lyrics-container-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    padding: 10px;
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    align-items: end;
+    justify-content: end;
+    gap: 10px;
+}
+
+.fullscreen-lyrics:hover .full-lyrics-container-header {
+    opacity: 1;
+}
+
+.minimize-lyrics,
+.fullscreen-lyrics {
+    background-color: transparent;
+    border: none;
+    border-radius: 0px;
+    padding: 0px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--lyrics-text-a20);
+}
+
+.minimize-lyrics svg,
+.fullscreen-lyrics svg {
+    width: 17px;
+    height: 17px;
+}
+
+.minimize-lyrics:hover,
+.fullscreen-lyrics:hover {
+    color: var(--lyrics-text-a0);
+    background-color: transparent;
+    border: none;
+}

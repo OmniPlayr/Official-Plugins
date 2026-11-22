@@ -1,8 +1,10 @@
-import { modify, useIsMobile, registerInfobar } from "@omniplayr/plugins";
+import { modify, useIsMobile, registerInfobar, registerRoute } from "@omniplayr/plugins";
 import { createRoot, type Root } from "react-dom/client";
 import LyricsView from "./LyricsView";
 import LyricsButton from "./LyricsButton";
 import translations from './translations';
+import InfobarPreview from "./InfobarPreview";
+import LyricsFull from "./LyricsFull";
 
 const plugin_key = "lyrics@built-in";
 
@@ -141,7 +143,14 @@ modify(plugin_key, 'Infobar.ib-song-more-info', (el, mount) => {
     if (!mount) return;
 
     const root = getRoot(mount);
-    root?.render(<h2>Yo2</h2>);
+    root?.render(<InfobarPreview/>);
+}, {
+    position: 'start'
+});
+
+registerRoute({
+    path: '/lyrics',
+    component: LyricsFull,
 });
 
 registerInfobar(plugin_key, { barId: 'lyrics', view: DesktopLyricsView })

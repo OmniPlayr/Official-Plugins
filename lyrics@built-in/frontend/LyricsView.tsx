@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import './styles/LyricsView.css';
-import { player } from '@omniplayr/plugins';
+import { player, currentInfobar, toggleInfoBar, navigate } from '@omniplayr/plugins';
 import getLyrics from './lyrics';
-import { AudioLines, LoaderCircle, Music } from 'lucide-react';
+import { AudioLines, LoaderCircle, Maximize2, Music } from 'lucide-react';
 import translations from './translations';
 import { currentQueueSong } from './metadata';
 
@@ -591,11 +591,25 @@ function LyricsView() {
         } : {}),
     } as CSSProperties;
 
+    const maximizeLyrics = async () => {
+        if (currentInfobar()?.id === 'lyrics@built-in') {
+            toggleInfoBar('lyrics@built-in', 'lyrics');
+        }
+
+        const currentPath = window.location.pathname + window.location.search + window.location.hash;
+        navigate(`/lyrics?path=${encodeURIComponent(currentPath)}`);
+    }
+
     return (
         <div
             className='lyrics-container'
             style={containerStyle}
         >
+            <div className="lyrics-container-header">
+                <button className="maximize-lyrics" onClick={maximizeLyrics}>
+                    <Maximize2/>
+                </button>
+            </div>
             {hasSyncedLyrics && !isFollowingLyrics && (
                 <button
                     className='lyrics-sync-button'
