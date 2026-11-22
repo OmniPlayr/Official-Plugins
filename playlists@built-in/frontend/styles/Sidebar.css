@@ -1,0 +1,278 @@
+.sidebar-library-list {
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+}
+
+.sidebar-library-list > * {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.playlists-sidebar {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.playlists-sidebar-header {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 10px;
+    padding: 0px 15px;
+}
+
+.playlists-sidebar-header-search-new {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    overflow: hidden;
+    gap: 10px;
+}
+
+.playlists-sidebar-header-search {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 8px;
+    background-color: var(--clr-popup-a10);
+    border: 1px solid var(--clr-popup-a30);
+    border-radius: 10px;
+    color: var(--clr-text-a10);
+    width: max-content;
+}
+
+.playlists-sidebar-header-search-icon {
+    color: var(--clr-text-a30);
+    width: 18px;
+    height: 18px;
+}
+
+.playlists-sidebar-header-search-input {
+    border: none;
+    background-color: transparent;
+    color: var(--clr-text-a0);
+    outline: none;
+    padding: 0px;
+    border-radius: 0px;
+    font-size: 14px;
+    width: 100%;
+}
+
+.playlists-sidebar-header-new {
+    display: flex;
+    flex-direction: row;
+    padding: 5px;
+    background-color: var(--clr-popup-a10);
+    border: 1px solid var(--clr-popup-a30);
+}
+
+.playlists-sidebar-header-new:hover {
+    background-color: var(--clr-popup-a20);
+    border-color: var(--clr-popup-a40);
+}
+
+.playlists-sidebar-header-new svg {
+    transition: color 0.2s ease-in-out;
+    color: var(--clr-text-a30);    
+    width: 18px;
+    height: 18px;
+}
+
+.playlists-sidebar-header-filters {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    align-items: center;
+    overflow-x: auto;
+    padding-bottom: 5px;
+}
+
+.playlists-sidebar-header-filters::-webkit-scrollbar {
+    height: 4px;
+}
+
+.playlists-sidebar-header-filters::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.playlists-sidebar-header-filters::-webkit-scrollbar-thumb {
+    background: var(--clr-popup-a10);
+    border-radius: 4px;
+}
+
+.playlists-sidebar-header-filter-item {
+    border-radius: 20px;
+    padding: 5px 10px;
+    font-size: 14px;
+    background-color: var(--clr-popup-a10);
+    border: 1px solid var(--clr-popup-a30);
+    color: var(--clr-text-a10);
+    cursor: pointer;
+}
+
+.playlists-sidebar-header-filter-item:hover {
+    background-color: var(--clr-popup-a20);
+    border-color: var(--clr-popup-a40);
+}
+
+.playlists-sidebar-header-filter-item.active {
+    background-color: var(--clr-text-light-a0);
+    border-color: var(--clr-text-light-a20);
+    color: var(--clr-text-dark-a10);
+}
+
+.playlists-sidebar-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.playlists-sidebar-playlist {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out, border 0.2s ease-in-out;
+    content-visibility: auto;
+    contain-intrinsic-size: 100% 64px;
+    margin: 0px 15px;
+}
+
+.playlists-sidebar-playlist:hover {
+    background-color: var(--clr-popup-a20);
+}
+
+.playlists-sidebar-playlist.active .playlists-sidebar-playlist-name {
+    color: var(--clr-primary-a10);
+}
+
+.playlists-sidebar-cover-wrap {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+}
+
+.playlists-sidebar-playlist-cover {
+    width: 48px;
+    height: 48px;
+    border-radius: 5px;
+    background-color: var(--clr-popup-a10);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    object-fit: cover;
+}
+
+.playlists-sidebar-play-button {
+    position: fixed;
+    right: 10px;
+    bottom: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--clr-primary-a10);
+    background-color: var(--clr-primary-a0);
+    border-radius: 50%;
+    color: var(--clr-text-a0);
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(50%);
+    transition: opacity 0.16s ease-in-out, transform 0.16s ease-in-out, background-color 0.16s ease-in-out, border-color 0.16s ease-in-out;
+}
+
+.playlists-sidebar-play-button svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+.playlists-sidebar-play-button:hover {
+    background-color: var(--clr-primary-a10);
+    border-color: var(--clr-primary-a30);
+}
+
+.playlists-sidebar-play-button:disabled {
+    cursor: wait;
+    opacity: 0.75;
+}
+
+.playlists-sidebar-playlist:hover .playlists-sidebar-play-button,
+.playlists-sidebar-playlist.active .playlists-sidebar-play-button {
+    opacity: 1;
+}
+
+.playlist-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+.playlists-sidebar-playlist-name {
+    font-weight: 500;
+    color: var(--clr-text-a10);
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.playlists-sidebar-playlist-created {
+    font-size: 12px;
+    color: var(--clr-text-a30);
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.playlists-sidebar-playlist.skeleton {
+    pointer-events: none;
+}
+
+.playlists-sidebar-skeleton-block,
+.playlists-sidebar-skeleton-line {
+    background: linear-gradient(90deg, rgba(255,255,255,.06) 25%, rgba(255,255,255,.12) 50%, rgba(255,255,255,.06) 75%);
+    background-size: 200% 100%;
+    animation: playlists-sidebar-shimmer 1.2s infinite linear;
+    border-radius: 8px;
+}
+
+.playlists-sidebar-skeleton-block {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+}
+
+.playlists-sidebar-skeleton-line {
+    height: 12px;
+    margin: 8px 0 0;
+    width: 80%;
+}
+
+.playlists-sidebar-skeleton-line.short {
+    width: 50%;
+}
+
+@keyframes playlists-sidebar-shimmer {
+    to { background-position: -200% 0; }
+}

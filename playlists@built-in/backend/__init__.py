@@ -51,6 +51,15 @@ def setup():
                 "created_at": "TIMESTAMPTZ NOT NULL DEFAULT NOW()",
                 "updated_at": "TIMESTAMPTZ NOT NULL DEFAULT NOW()",
                 "private": "BOOLEAN NOT NULL DEFAULT FALSE"
+            },
+            "frequent_playlists": {
+                "id": "SERIAL PRIMARY KEY",
+                "frequency": "INT NOT NULL",
+                "playlist_id": "TEXT NOT NULL",
+                "service": "VARCHAR(20) NOT NULL DEFAULT 'local'",
+                "account_id": "INT NOT NULL",
+                "created_at": "TIMESTAMPTZ NOT NULL DEFAULT NOW()",
+                "updated_at": "TIMESTAMPTZ NOT NULL DEFAULT NOW()"
             }
         },
         read=["accounts"],

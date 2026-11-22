@@ -4,6 +4,12 @@ All notable changes to `queued@built-in` are documented here. This changelog fol
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-22
+
+### Changed
+
+- Updated the plugin to use the new Infobar
+
 ## [1.0.2] - 2026-07-15
 
 ### Changed

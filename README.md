@@ -76,7 +76,7 @@ Requires a Google Cloud OAuth client configured for TVs and limited-input device
 ### [`playlists@built-in`](./playlists@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend beta-1.4.1 / Frontend beta-1.4.2
+**Version:** Backend beta-1.5.0 / Frontend beta-1.5.0
 
 Create, browse, and stream playlists inside OmniPlayr. The plugin manages local OmniPlayr playlists, automatically creates a private Liked Songs playlist for each user, and includes collaborator metadata for local playlists.
 

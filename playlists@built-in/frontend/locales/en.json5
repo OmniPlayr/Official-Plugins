@@ -12,6 +12,15 @@
     "home.playlist.createdFor": "Created for {{name}}",
     "home.playlist.createdBy": "Created by {{name}}",
 
+    "sidebar.playlist.createdFor": "Created for {{name}}",
+    "sidebar.playlist.createdBy": "Created by {{name}}",
+
+    "sidebar.yourlibrary": "Your Library",
+
+    "sidebar.search.placeholder": "Search Playlists",
+
+    "sidebar.new-playlist": "Create new playlist",
+
     "playlists.publicity.private": "Private Playlist",
     "playlists.publicity.public": "Public Playlist",
 

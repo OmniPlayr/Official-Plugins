@@ -1,14 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import './styles/LyricsView.css';
-import { getLyricsVisibleState, readStoredSideTabWidth, setSideTabWidth, subscribeLyricsVisibleState, subscribeSideTabWidth } from './lyricsState';
 import { player } from '@omniplayr/plugins';
 import getLyrics from './lyrics';
 import { AudioLines, LoaderCircle, Music } from 'lucide-react';
 import translations from './translations';
 import { currentQueueSong } from './metadata';
-import { useSideTabTransition } from './useSideTabTransition';
 
-const SIDETAB_MIN_WIDTH = 300;
 const FOLLOW_CENTER_THRESHOLD_PX = 140;
 
 type LyricsData = Awaited<ReturnType<typeof getLyrics>>;
@@ -22,7 +19,6 @@ const NOT_FOUND_MESSAGE_COUNT = 4;
 interface LyricsResult {
     syncedLyrics: string | null;
     plainLyrics: string | null;
-    lyricsVisible: boolean;
     syncRequest: number;
     onFollowingChange: (following: boolean) => void;
 }
@@ -305,24 +301,26 @@ function hashString(value: string) {
 function Lyrics({
     syncedLyrics,
     plainLyrics,
-    lyricsVisible,
     syncRequest,
     onFollowingChange,
 }: LyricsResult) {
     const { t } = translations.useTranslation();
-    const [ currentTime, setCurrentTime ] = useState(player.currentTime);
+    const [currentTime, setCurrentTime] = useState(player.currentTime);
     const rootRef = useRef<HTMLDivElement>(null);
     const lineRefs = useRef<Array<HTMLParagraphElement | null>>([]);
     const followCurrentLineRef = useRef(true);
     const programmaticScrollTimeoutRef = useRef<number | null>(null);
+
     const syncedLines = useMemo(
         () => syncedLyrics ? parseSyncedLyrics(syncedLyrics) : [],
         [syncedLyrics],
     );
+
     const plainLines = useMemo(
         () => !syncedLines.length && plainLyrics ? parsePlainLyrics(plainLyrics) : [],
         [syncedLines.length, plainLyrics],
     );
+
     const targetLineIndex = useMemo(
         () => syncedLines.length ? scrollTargetLineIndex(syncedLines, currentTime) : -1,
         [syncedLines, currentTime],
@@ -376,14 +374,13 @@ function Lyrics({
     }, [syncedLines]);
 
     useEffect(() => {
-        if (!lyricsVisible) return;
         scrollToTargetLine('auto');
-    }, [lyricsVisible, syncedLines]);
+    }, [syncedLines]);
 
     useEffect(() => {
-        if (!lyricsVisible || !followCurrentLineRef.current) return;
+        if (!followCurrentLineRef.current) return;
         scrollToTargetLine('smooth');
-    }, [lyricsVisible, targetLineIndex]);
+    }, [targetLineIndex]);
 
     const handleScroll = () => {
         if (programmaticScrollTimeoutRef.current !== null || targetLineIndex === -1) return;
@@ -450,47 +447,10 @@ function Lyrics({
 
 function LyricsView() {
     const { t } = translations.useTranslation();
-    const [ lyricsVisible, setLyricsVisible ] = useState(getLyricsVisibleState);
-    const lyricsTransition = useSideTabTransition('lyrics', lyricsVisible);
-    const [ sideTabWidth, setSideTabWidthState ] = useState(readStoredSideTabWidth);
-    const [ lyricsState, setLyricsState ] = useState<LyricsLoadState>({ status: 'idle', lyrics: null });
-    const containerRef = useRef<HTMLDivElement>(null);
-    const resizingRef = useRef<{
-        startX: number;
-        startWidth: number;
-        maxWidth: number;
-    } | null>(null);
-    const resizeFrameRef = useRef<number | null>(null);
-    const pendingResizeWidthRef = useRef(sideTabWidth);
-    const [ averageColor, setAverageColor ] = useState<AverageColor | null>(null);
-    const [ isFollowingLyrics, setIsFollowingLyrics ] = useState(true);
-    const [ syncRequest, setSyncRequest ] = useState(0);
-
-    useEffect(() => subscribeLyricsVisibleState(setLyricsVisible), []);
-    useEffect(() => subscribeSideTabWidth(setSideTabWidthState), []);
-
-    useEffect(() => {
-        const clampWidth = () => {
-            const dashboard = containerRef.current?.closest('.dashboard-hor') as HTMLElement | null;
-            const maxWidth = dashboard ? Math.max(SIDETAB_MIN_WIDTH, Math.floor(dashboard.clientWidth / 2)) : Number.POSITIVE_INFINITY;
-            const next = Math.min(Math.max(SIDETAB_MIN_WIDTH, readStoredSideTabWidth()), maxWidth);
-            setSideTabWidthState(setSideTabWidth(next));
-        };
-
-        clampWidth();
-        window.addEventListener('resize', clampWidth);
-        return () => window.removeEventListener('resize', clampWidth);
-    }, []);
-
-    useEffect(() => {
-        pendingResizeWidthRef.current = sideTabWidth;
-    }, [sideTabWidth]);
-
-    useEffect(() => () => {
-        if (resizeFrameRef.current !== null) {
-            window.cancelAnimationFrame(resizeFrameRef.current);
-        }
-    }, []);
+    const [lyricsState, setLyricsState] = useState<LyricsLoadState>({ status: 'idle', lyrics: null });
+    const [averageColor, setAverageColor] = useState<AverageColor | null>(null);
+    const [isFollowingLyrics, setIsFollowingLyrics] = useState(true);
+    const [syncRequest, setSyncRequest] = useState(0);
 
     useEffect(() => {
         let disposed = false;
@@ -617,62 +577,11 @@ function LyricsView() {
         };
     }, []);
 
-    const startResize = (event: ReactPointerEvent<HTMLDivElement>) => {
-        const container = containerRef.current;
-        const dashboard = container?.closest('.dashboard-hor') as HTMLElement | null;
-        if (!container || !dashboard) return;
-
-        resizingRef.current = {
-            startX: event.clientX,
-            startWidth: container.getBoundingClientRect().width,
-            maxWidth: Math.max(SIDETAB_MIN_WIDTH, Math.floor(dashboard.clientWidth / 2)),
-        };
-        event.currentTarget.setPointerCapture(event.pointerId);
-        document.body.classList.add('lyrics-sidetab-resizing');
-    };
-
-    const resize = (event: ReactPointerEvent<HTMLDivElement>) => {
-        const resizing = resizingRef.current;
-        if (!resizing) return;
-
-        const delta = resizing.startX - event.clientX;
-        pendingResizeWidthRef.current = Math.min(
-            Math.max(SIDETAB_MIN_WIDTH, resizing.startWidth + delta),
-            resizing.maxWidth,
-        );
-
-        if (resizeFrameRef.current !== null) return;
-        resizeFrameRef.current = window.requestAnimationFrame(() => {
-            resizeFrameRef.current = null;
-            const container = containerRef.current;
-            if (!container || !resizingRef.current) return;
-            container.style.width = `${pendingResizeWidthRef.current}px`;
-            setSideTabWidthState(setSideTabWidth(pendingResizeWidthRef.current));
-        });
-    };
-
-    const endResize = (event: ReactPointerEvent<HTMLDivElement>) => {
-        if (!resizingRef.current) return;
-        resizingRef.current = null;
-        if (resizeFrameRef.current !== null) {
-            window.cancelAnimationFrame(resizeFrameRef.current);
-            resizeFrameRef.current = null;
-        }
-        const finalWidth = Math.round(pendingResizeWidthRef.current);
-        if (containerRef.current) {
-            containerRef.current.style.width = `${finalWidth}px`;
-        }
-        setSideTabWidthState(setSideTabWidth(finalWidth));
-        event.currentTarget.releasePointerCapture(event.pointerId);
-        document.body.classList.remove('lyrics-sidetab-resizing');
-    };
-
     const loadedLyrics = lyricsState.status === 'loaded' ? lyricsState.lyrics : null;
     const hasSyncedLyrics = Boolean(loadedLyrics?.syncedLyrics);
     const notFoundMessageId = (hashString(currentTrackKey() ?? 'idle') % NOT_FOUND_MESSAGE_COUNT) + 1;
 
     const containerStyle = {
-        '--lyrics-sidetab-width': `${sideTabWidth}px`,
         ...(averageColor ? {
             backgroundColor: averageColor.color,
             '--lyrics-text-a0': averageColor.textA0,
@@ -684,22 +593,9 @@ function LyricsView() {
 
     return (
         <div
-            className={`lyrics-sidetab-container${lyricsTransition.switching ? ' lyrics-sidetab-container-switching' : ''}${lyricsTransition.closing ? ' lyrics-sidetab-container-closing' : ''}${lyricsTransition.hidden ? ' lyrics-sidetab-container-hidden' : ''}${lyricsTransition.collapsed ? ' lyrics-sidetab-container-collapsed' : ''}`}
-            ref={containerRef}
+            className='lyrics-container'
             style={containerStyle}
-            aria-hidden={!lyricsVisible}
         >
-            {lyricsVisible && (
-                <div
-                    className='lyrics-sidetab-resize-handle'
-                    onPointerDown={startResize}
-                    onPointerMove={resize}
-                    onPointerUp={endResize}
-                    onPointerCancel={endResize}
-                    role='separator'
-                    aria-orientation='vertical'
-                />
-            )}
             {hasSyncedLyrics && !isFollowingLyrics && (
                 <button
                     className='lyrics-sync-button'
@@ -712,6 +608,7 @@ function LyricsView() {
                     {t('lyrics.sync')}
                 </button>
             )}
+
             {lyricsState.status === 'loading' ? (
                 <div className='lyrics-loading' aria-label={t('lyrics.loading')}>
                     <LoaderCircle />
@@ -721,7 +618,6 @@ function LyricsView() {
                     <Lyrics
                         syncedLyrics={loadedLyrics.syncedLyrics}
                         plainLyrics={loadedLyrics.plainLyrics}
-                        lyricsVisible={lyricsVisible}
                         syncRequest={syncRequest}
                         onFollowingChange={setIsFollowingLyrics}
                     />
@@ -733,12 +629,12 @@ function LyricsView() {
                     </p>
                 </>
             ) : (
-                <div className='lyrics-sidetab-placeholder'>
+                <div className='lyrics-placeholder'>
                     <span className='lyrics-not-found'>{t(`lyrics.not_found.${notFoundMessageId}`)}</span>
                 </div>
             )}
         </div>
-    )
+    );
 }
 
 export default LyricsView;

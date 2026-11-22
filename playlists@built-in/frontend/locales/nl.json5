@@ -12,6 +12,15 @@
     "home.playlist.createdFor": "Gemaakt voor {{name}}",
     "home.playlist.createdBy": "Gemaakt door {{name}}",
 
+    "sidebar.playlist.createdFor": "Gemaakt voor {{name}}",
+    "sidebar.playlist.createdBy": "Gemaakt door {{name}}",
+
+    "sidebar.yourlibrary": "Jouw bibliotheek",
+
+    "sidebar.search.placeholder": "Zoeken in Playlists",
+
+    "sidebar.new-playlist": "Maak nieuwe playlist",
+
     "playlists.publicity.private": "Privéplaylist",
     "playlists.publicity.public": "Openbare playlist",
 

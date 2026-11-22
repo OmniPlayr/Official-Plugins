@@ -6,4 +6,7 @@
     "queue.next-from": "Hierna uit: {{playlist}}",
     "queue.loading": "Laden...",
     "queue.load-more": "Meer laden",
+
+    "next-queue.text": "Volgende in wachtrij",
+    "next-queue.open": "Open wachtrij",
 }

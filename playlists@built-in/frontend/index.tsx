@@ -1,6 +1,7 @@
 import { createRoot, type Root } from "react-dom/client";
 import Home from "./Home";
 import Playlist from "./Playlist";
+import Sidebar from "./Sidebar";
 
 import {
     modify,
@@ -50,6 +51,54 @@ modify(plugin_key, 'Dashboard.dashboard-home', el => {
     if (root) {
         root.render(<Home />);
     }
+});
+
+modify(plugin_key, 'Sidebar.sidebar-library-list', el => {
+    el.setAttribute("data-plugin-hooked", "");
+
+    let container = el.querySelector(":scope > .__plugin-hook-wrapper");
+
+    if (!container) {
+        container = document.createElement("div");
+        container.className = "__plugin-hook-wrapper";
+        el.appendChild(container);
+    }
+
+    const root = getRoot(container);
+
+    if (root) {
+        root.render(<Sidebar />);
+    }
+})
+
+function SidebarTitle() {
+    const { t } = translations.useTranslation();
+
+    return <>{t('sidebar.yourlibrary')}</>;
+}
+
+modify(plugin_key, 'Sidebar.sidebar-title', el => {
+    el.setAttribute("data-plugin-hooked", "");
+
+    let container = el.querySelector(":scope > .__plugin-hook-wrapper");
+
+    if (!container) {
+        container = document.createElement("div");
+        container.className = "__plugin-hook-wrapper";
+        el.appendChild(container);
+    }
+
+    const root = getRoot(container);
+
+    if (root) {
+        root.render(<SidebarTitle />);
+    }
+
+    Array.from(el.childNodes).forEach(node => {
+        if (node !== container) {
+            node.remove();
+        }
+    });
 });
 
 registerRoute({

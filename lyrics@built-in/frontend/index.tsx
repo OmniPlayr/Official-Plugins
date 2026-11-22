@@ -1,4 +1,4 @@
-import { modify, useIsMobile } from "@omniplayr/plugins";
+import { modify, useIsMobile, registerInfobar } from "@omniplayr/plugins";
 import { createRoot, type Root } from "react-dom/client";
 import LyricsView from "./LyricsView";
 import LyricsButton from "./LyricsButton";
@@ -70,23 +70,6 @@ function getSideTabButtonSlot(el: Element, className: string, order: number) {
     return container;
 }
 
-modify(plugin_key, 'Dashboard.dashboard-hor', el => {
-    el.setAttribute("data-plugin-hooked", "");
-
-    let container = el.querySelector(
-        ":scope > .__plugin-hook-wrapper.lyrics-plugin-root"
-    );
-
-    if (!container) {
-        container = document.createElement("div");
-        container.className = "__plugin-hook-wrapper lyrics-plugin-root";
-        el.appendChild(container);
-    }
-
-    desktopLyricsRoot = getRoot(container) ?? null;
-    desktopLyricsRoot?.render(<DesktopLyricsView />);
-});
-
 function mountMobileLyrics() {
     const el = document.querySelector('[data-component="Player-Fullscreen"], .Player-Fullscreen');
 
@@ -154,6 +137,15 @@ function rerenderLyricsViews() {
     });
 }
 
+modify(plugin_key, 'Infobar.ib-song-more-info', (el, mount) => {
+    if (!mount) return;
+
+    const root = getRoot(mount);
+    root?.render(<h2>Yo2</h2>);
+});
+
+registerInfobar(plugin_key, { barId: 'lyrics', view: DesktopLyricsView })
+
 window.addEventListener("resize", rerenderLyricsViews);
 
 modify(plugin_key, 'Player.plugin-target-before-volume-option', el => {
@@ -170,10 +162,7 @@ modify(plugin_key, 'Player.plugin-target-before-volume-option', el => {
 export default translations;
 export {
     getLyricsVisibleState,
-    readStoredSideTabWidth,
     setLyricsVisibleState,
-    setSideTabWidth,
     subscribeLyricsVisibleState,
-    subscribeSideTabWidth,
     toggleLyricsVisibleState,
 } from "./lyricsState";

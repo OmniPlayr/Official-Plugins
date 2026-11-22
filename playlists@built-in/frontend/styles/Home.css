@@ -26,6 +26,43 @@
     color: var(--clr-text-a30);
 }
 
+.playlists-home-header {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.playlists-home-header-filters {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    align-items: center;
+}
+
+.playlists-home-header-filter-item {
+    border-radius: 20px;
+    padding: 5px 10px;
+    font-size: 14px;
+    background-color: var(--clr-popup-a10);
+    border: 1px solid var(--clr-popup-a30);
+    color: var(--clr-text-a10);
+    cursor: pointer;
+}
+
+.playlists-home-header-filter-item:hover {
+    background-color: var(--clr-popup-a20);
+    border-color: var(--clr-popup-a40);
+}
+
+.playlists-home-header-filter-item.active {
+    background-color: var(--clr-text-light-a0);
+    border-color: var(--clr-text-light-a20);
+    color: var(--clr-text-dark-a10);
+}
+
 .playlists-home-now-playing {
     display: flex;
     align-items: center;
@@ -85,6 +122,13 @@
     overflow-x: auto;
 }
 
+.playlists-home-playlists.frequent {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+    gap: 10px;
+    overflow-x: hidden;
+}
+
 .playlists-home-playlist {
     display: flex;
     flex-direction: column;
@@ -119,10 +163,33 @@
     width: 150px;
     height: 150px;
     border-radius: 5px;
-    background-color: var(--clr-bg-a10);
+    background-color: var(--clr-popup-a10);
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    object-fit: cover;    
+}
+
+.playlists-home-playlists.frequent .playlists-home-playlist {
+    flex-direction: row;
+    width: 100%;
+    padding: 0px;
+    gap: 5px;
+}
+
+.playlists-home-playlists.frequent .playlists-home-cover-wrap,
+.playlists-home-playlists.frequent .playlists-home-playlist-cover {
+    width: auto;
+    height: auto;
+    max-height: 60px;
+}
+
+.playlists-home-playlists.frequent .playlist-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px;
+    width: 100%;
 }
 
 .playlists-home-play-button {
@@ -165,6 +232,13 @@
     opacity: 1;
     transform: translateY(0);
 }
+
+.playlists-home-playlists.frequent .playlists-home-play-button {
+    position: fixed;
+    bottom: 50%;
+    transform: translateY(50%);
+}
+
 
 .playlists-home-playlist-name {
     font-weight: 500;
@@ -226,3 +300,16 @@
     background-color: transparent;
     border: none;
 }
+
+.playlists-home-playlist.skeleton { pointer-events: none; }
+.skeleton-block,
+.skeleton-line {
+    background: linear-gradient(90deg, rgba(255,255,255,.06) 25%, rgba(255,255,255,.12) 50%, rgba(255,255,255,.06) 75%);
+    background-size: 200% 100%;
+    animation: playlists-home-shimmer 1.2s infinite linear;
+    border-radius: 8px;
+}
+.skeleton-block { aspect-ratio: 1 / 1; width: 100%; }
+.skeleton-line { height: 12px; margin: 8px 0 0; width: 80%; }
+.skeleton-line.short { width: 50%; }
+@keyframes playlists-home-shimmer { to { background-position: -200% 0; } }

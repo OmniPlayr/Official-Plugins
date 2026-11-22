@@ -1,36 +1,5 @@
-import { api, player, type QueueItem } from '@omniplayr/plugins';
+import { player, type QueueItem } from '@omniplayr/plugins';
 import type { QueueSong, SongMetadata } from './types';
-
-export const songMetadataCache = new Map<string, SongMetadata | null>();
-const songMetadataRequests = new Map<string, Promise<SongMetadata | null>>();
-
-async function getMetadata(songId: string, sourceType: string) {
-    return api(`/player/media/${sourceType}:${encodeURIComponent(songId)}`) as Promise<{ metadata?: SongMetadata | null }>;
-}
-
-export function songMetadataKey(item: QueueItem) {
-    return `${item.sourceType}:${item.songId}`;
-}
-
-export async function getCachedMetadata(item: QueueItem) {
-    const key = songMetadataKey(item);
-    if (songMetadataCache.has(key)) return songMetadataCache.get(key) ?? null;
-    if (songMetadataRequests.has(key)) return songMetadataRequests.get(key)!;
-
-    const request = getMetadata(item.songId, item.sourceType)
-        .then((media) => normalizeMetadata(media.metadata))
-        .catch(() => null)
-        .then((metadata) => {
-            songMetadataCache.set(key, metadata);
-            return metadata;
-        })
-        .finally(() => {
-            songMetadataRequests.delete(key);
-        });
-
-    songMetadataRequests.set(key, request);
-    return request;
-}
 
 function isAssetReference(value: unknown): value is { asset_id: unknown } {
     return Boolean(value && typeof value === 'object' && 'asset_id' in value);
@@ -70,17 +39,33 @@ export function metadataFromQueueItem(item: QueueItem): SongMetadata | null {
     };
 }
 
+export function metadataForQueueItem(item: QueueItem): SongMetadata | null {
+    const fallback = metadataFromQueueItem(item);
+    const provided = normalizeMetadata(item.metadata);
+
+    if (!provided) return fallback;
+
+    const filled = Object.fromEntries(
+        Object.entries(provided).filter(([, value]) => value !== null && value !== undefined)
+    );
+
+    return { ...fallback, ...filled };
+}
+
+export function toQueueSong(item: QueueItem): QueueSong {
+    return {
+        item,
+        metadata: metadataForQueueItem(item),
+    };
+}
+
 export function currentQueueSong(): QueueSong | null {
     if (!player.currentSongId || !player.currentSourceType) return null;
 
-    const item: QueueItem = {
+    return toQueueSong({
         songId: player.currentSongId,
         sourceType: player.currentSourceType,
         extra: player.currentExtra ?? undefined,
-    };
-
-    return {
-        item,
-        metadata: normalizeMetadata(player.currentMetadata) ?? metadataFromQueueItem(item),
-    };
+        metadata: player.currentMetadata,
+    });
 }

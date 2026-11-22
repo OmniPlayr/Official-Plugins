@@ -1,8 +1,9 @@
 import { createRoot, type Root } from "react-dom/client";
 import Queue from "./Queue";
-import { modify } from "@omniplayr/plugins";
+import { modify, registerInfobar } from "@omniplayr/plugins";
 import QueueButton from "./QueueButton";
 import translations from './translations';
+import NextQueue from "./NextQueue";
 
 const plugin_key = "queued@built-in";
 
@@ -51,26 +52,6 @@ function getSideTabButtonSlot(el: Element, className: string, order: number) {
     return container;
 }
 
-modify(plugin_key, 'Dashboard.dashboard-hor', el => {
-    el.setAttribute("data-plugin-hooked", "");
-
-    let container = el.querySelector(
-        ":scope > .__plugin-hook-wrapper.queue-plugin-root"
-    );
-
-    if (!container) {
-        container = document.createElement("div");
-        container.className = "__plugin-hook-wrapper queue-plugin-root";
-        el.appendChild(container);
-    }
-
-    const root = getRoot(container);
-
-    if (root) {
-        root.render(<Queue />);
-    }
-});
-
 modify(plugin_key, 'Player.plugin-target-before-volume-option', el => {
     el.setAttribute("data-plugin-hooked", "");
 
@@ -82,6 +63,17 @@ modify(plugin_key, 'Player.plugin-target-before-volume-option', el => {
         root.render(<QueueButton />);
     }
 });
+
+modify(plugin_key, 'Infobar.ib-song-more-info', (el, mount) => {
+    if (!mount) return;
+
+    const root = getRoot(mount);
+    root?.render(<NextQueue/>);
+}, {
+    position: 'end'
+});
+
+registerInfobar(plugin_key, { barId: 'queued', view: Queue })
 
 export default translations;
 export {

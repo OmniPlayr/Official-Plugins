@@ -6,4 +6,7 @@
     "queue.next-from": "Next from: {{playlist}}",
     "queue.loading": "Loading...",
     "queue.load-more": "Load more",
+
+    "next-queue.text": "Next in queue",
+    "next-queue.open": "Open queue",
 }

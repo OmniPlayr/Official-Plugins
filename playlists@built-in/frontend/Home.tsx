@@ -1,9 +1,9 @@
 import './styles/Home.css';
 import translations from './translations';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 import liked from './assets/liked.svg';
 import unknownArt from '../../assets/images/unknown-art.svg';
-import { LoaderCircle, Pause, Play } from 'lucide-react';
+import { Pause, Play } from 'lucide-react';
 
 import {
     api,
@@ -28,6 +28,18 @@ export type Playlist = {
     created_by_name: string;
 };
 
+export type FrequentPlaylist = {
+    frequency: number;
+    playlist_id: string | number;
+    account_id: string | number;
+    service?: string;
+};
+
+export type PlaylistsResponse = {
+    playlists: Playlist[];
+    frequent: FrequentPlaylist[];
+};
+
 export type PlaylistSongMetadata = {
     title: string;
     artist: string;
@@ -42,31 +54,97 @@ export type PlaylistSong = {
     metadata: PlaylistSongMetadata;
 };
 
+const SERVICES = ['local', 'spotify', 'soundcloud', 'youtube'] as const;
+type Service = typeof SERVICES[number];
+type TimedResponse = PlaylistsResponse & { startedAt: number };
+
 export type HomeCache = {
+    key: string;
     account?: UserAccount;
     accountRequest?: Promise<UserAccount>;
     playlists?: Playlist[];
-    playlistsRequest?: Promise<Playlist[]>;
+    byService: Partial<Record<Service, Playlist[]>>;
+    serviceRequests: Partial<Record<Service, Promise<TimedResponse>>>;
+    live: Set<Service>;
+    known: Map<string, Playlist>;
+    frequentPlaylists?: FrequentPlaylist[];
+    lastBumpAt: number;
     songs?: Map<string, PlaylistSong[]>;
     songRequests?: Map<string, Promise<PlaylistSong[]>>;
 };
 
 const homeCache = new Map<string, HomeCache>();
-const PERSISTENT_CACHE_PREFIX = 'omniplayr:playlist-home:';
+const attemptedResolves = new Set<string>();
+const LEGACY_CACHE_PREFIX = 'omniplayr:playlist-home:';
+const PERSISTENT_CACHE_PREFIX = 'omniplayr:home:';
 const HOME_SERVICE_PLAYLIST_LIMIT = 11;
-const HOME_PLAYLIST_SERVICES = 'local,spotify,soundcloud,youtube';
-let prunedPersistentPlaylistCaches = false;
+const HOME_VISIBLE_LIMIT = 10;
+const FREQUENT_LIMIT = 8;
+const KNOWN_LIMIT = 80;
+let prunedLegacyCaches = false;
 
-function prunePersistentPlaylistCaches() {
-    if (prunedPersistentPlaylistCaches) return;
-    prunedPersistentPlaylistCaches = true;
-    for (let index = 0; index < localStorage.length; index += 1) {
-        const key = localStorage.key(index);
-        if (key?.startsWith(PERSISTENT_CACHE_PREFIX)) {
-            localStorage.removeItem(key);
-            index -= 1;
+function pruneLegacyCaches() {
+    if (prunedLegacyCaches) return;
+    prunedLegacyCaches = true;
+    try {
+        for (let index = 0; index < localStorage.length; index += 1) {
+            const key = localStorage.key(index);
+            if (key?.startsWith(LEGACY_CACHE_PREFIX)) {
+                localStorage.removeItem(key);
+                index -= 1;
+            }
         }
+    } catch {
     }
+}
+
+const stripHeavy = (playlist: Playlist): Playlist => (
+    playlist.cover?.startsWith('data:') ? { ...playlist, cover: null } : playlist
+);
+
+function persist(cache: HomeCache) {
+    try {
+        localStorage.setItem(PERSISTENT_CACHE_PREFIX + cache.key, JSON.stringify({
+            byService: Object.fromEntries(
+                Object.entries(cache.byService).map(([service, list]) => [service, (list ?? []).map(stripHeavy)]),
+            ),
+            frequent: cache.frequentPlaylists ?? [],
+            known: [...cache.known.values()].map(stripHeavy),
+        }));
+    } catch {
+    }
+}
+
+function loadPersisted(cache: HomeCache) {
+    try {
+        const raw = localStorage.getItem(PERSISTENT_CACHE_PREFIX + cache.key);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (data.byService && typeof data.byService === 'object') cache.byService = data.byService;
+        if (Array.isArray(data.frequent)) cache.frequentPlaylists = data.frequent;
+        if (Array.isArray(data.known)) {
+            data.known.forEach((playlist: Playlist) => cache.known.set(playlistKey(playlist), playlist));
+        }
+    } catch {
+    }
+}
+
+function remember(cache: HomeCache, playlists: Playlist[]) {
+    playlists.forEach(playlist => {
+        const key = playlistKey(playlist);
+        cache.known.delete(key);
+        cache.known.set(key, playlist);
+    });
+    while (cache.known.size > KNOWN_LIMIT) {
+        const oldest = cache.known.keys().next().value;
+        if (oldest === undefined) break;
+        cache.known.delete(oldest);
+    }
+}
+
+function flatten(cache: HomeCache) {
+    cache.playlists = SERVICES.flatMap(service => cache.byService[service] ?? []);
+    return cache.playlists;
 }
 
 function getCache(accountToken: string | null = getAccount()) {
@@ -74,14 +152,19 @@ function getCache(accountToken: string | null = getAccount()) {
     let cache = homeCache.get(key);
 
     if (!cache) {
-        try {
-            prunePersistentPlaylistCaches();
-        } catch {
-            
-        }
-        cache = {};
-        cache.songs = new Map();
-        cache.songRequests = new Map();
+        pruneLegacyCaches();
+        cache = {
+            key,
+            byService: {},
+            serviceRequests: {},
+            live: new Set(),
+            known: new Map(),
+            lastBumpAt: 0,
+            songs: new Map(),
+            songRequests: new Map(),
+        };
+        loadPersisted(cache);
+        flatten(cache);
         homeCache.set(key, cache);
     }
     cache.songs ??= new Map();
@@ -195,125 +278,47 @@ export async function getPlaylistSongs(cache: HomeCache, playlist: Playlist, onU
     return request;
 }
 
-function getPlaylists(
-    userId: string | number,
-    cache: HomeCache,
-    onUpdate: (playlists: Playlist[]) => void,
-    onUser: (user: UserAccount) => void,
-) {
-    if (cache.playlistsRequest) return cache.playlistsRequest;
+function fetchService(cache: HomeCache, service: Service) {
+    const existing = cache.serviceRequests[service];
+    if (existing) return existing;
 
-    cache.playlistsRequest = (async () => {
-        const playlists = new Map<string, Playlist>();
-        const allCachedPlaylists = new Map<string, Playlist>(
-            (cache.playlists ?? []).map((playlist) => [playlistKey(playlist), playlist]),
-        );
-        const cachedSpotifyOffset = Array.from(allCachedPlaylists.values())
-            .filter((playlist) => playlist.service === 'spotify').length;
-        const cachedYoutubeOffset = Array.from(allCachedPlaylists.values())
-            .filter((playlist) => playlist.service === 'youtube').length;
-        let receivedPlaylist = false;
-        let fallbackLoaded = false;
-        let fallbackTimer: ReturnType<typeof window.setTimeout> | null = null;
-
-        const loadFallbackPlaylists = async () => {
-            if (receivedPlaylist || fallbackLoaded) return;
-            fallbackLoaded = true;
-
-            try {
-                const fallbackUser = cache.account ?? await account(cache);
-                onUser(fallbackUser);
-                const services = encodeURIComponent(HOME_PLAYLIST_SERVICES);
-                const response = await api(
-                    `/plugin/playlists/${fallbackUser.id}/cached?services=${services}&limit=${HOME_SERVICE_PLAYLIST_LIMIT}`,
-                ) as Playlist[];
-                response.forEach((playlist) => {
-                    playlists.set(playlistKey(playlist), playlist);
-                    allCachedPlaylists.set(playlistKey(playlist), playlist);
-                });
-                cache.playlists = Array.from(allCachedPlaylists.values());
-                onUpdate(cache.playlists);
-            } catch {
-
-            }
-        };
-
-        try {
-            const services = encodeURIComponent(HOME_PLAYLIST_SERVICES);
-            fallbackTimer = window.setTimeout(() => {
-                void loadFallbackPlaylists();
-            }, 2500);
-            const response = await api(
-                `/plugin/playlists/${userId}/stream?services=${services}&limit=${HOME_SERVICE_PLAYLIST_LIMIT}&spotify_offset=${cachedSpotifyOffset}&youtube_offset=${cachedYoutubeOffset}`,
-                undefined,
-                undefined,
-                true,
-                true,
-            ) as Response;
-
-            if (!response.body) throw new Error('Playlist stream has no response body');
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-
-            const consumeLine = (line: string) => {
-                if (!line.trim()) return;
-                const event = JSON.parse(line) as { type: string; playlist?: Playlist; user?: UserAccount };
-                if (event.type === 'start' && event.user) {
-                    cache.account = event.user;
-                    onUser(event.user);
-                    return;
-                }
-                if (event.type === 'playlist' && event.playlist) {
-                    receivedPlaylist = true;
-                    playlists.set(playlistKey(event.playlist), event.playlist);
-                    allCachedPlaylists.set(playlistKey(event.playlist), event.playlist);
-                    cache.playlists = Array.from(allCachedPlaylists.values());
-                    onUpdate(cache.playlists);
-                } else if (event.type === 'page') {
-                    cache.playlists = Array.from(allCachedPlaylists.values());
-                    onUpdate(cache.playlists);
-                } else if (event.type === 'done') {
-                    cache.playlists = Array.from(allCachedPlaylists.values());
-                    onUpdate(cache.playlists);
-                }
-            };
-
-            while (true) {
-                const { done, value } = await reader.read();
-                buffer += decoder.decode(value, { stream: !done });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() ?? '';
-                lines.forEach(consumeLine);
-                if (done) break;
-            }
-            consumeLine(buffer);
-        } catch {
-            await loadFallbackPlaylists();
-        } finally {
-            if (fallbackTimer !== null) {
-                window.clearTimeout(fallbackTimer);
-            }
-        }
-
-        cache.playlists = Array.from(allCachedPlaylists.values());
-        return cache.playlists;
-    })()
+    const startedAt = Date.now();
+    const request = (api(
+        `/plugin/playlists/me?services=${service}&limit=${HOME_SERVICE_PLAYLIST_LIMIT}`,
+    ) as Promise<PlaylistsResponse>)
+        .then(data => {
+            const playlists = Array.isArray(data.playlists) ? data.playlists : [];
+            cache.byService[service] = playlists;
+            cache.live.add(service);
+            remember(cache, playlists);
+            flatten(cache);
+            applyFrequent(cache, data.frequent, startedAt);
+            persist(cache);
+            return { ...data, startedAt };
+        })
         .finally(() => {
-            cache.playlistsRequest = undefined;
+            delete cache.serviceRequests[service];
         });
 
-    return cache.playlistsRequest;
+    cache.serviceRequests[service] = request;
+    return request;
+}
+
+function applyFrequent(cache: HomeCache, frequent: FrequentPlaylist[] | undefined, startedAt: number) {
+    if (!Array.isArray(frequent) || startedAt <= cache.lastBumpAt) return;
+    cache.frequentPlaylists = frequent;
+}
+
+function frequentMatches(frequent: FrequentPlaylist, playlist: Playlist) {
+    if (String(frequent.playlist_id) !== String(playlist.id)) return false;
+    return !frequent.service || frequent.service === playlist.service;
 }
 
 function Home() {
     const { t } = translations.useTranslation();
     const [accountKey, setAccountKey] = useState(() => getAccount() ?? 'no-account');
     const cache = useMemo(() => getCache(accountKey === 'no-account' ? null : accountKey), [accountKey]);
-    const [userAccount, setUserAccount] = useState<UserAccount | null>(cache.account ?? null);
-    const [descriptionId] = useState(() => Math.floor(Math.random() * 6) + 1);
-    const [playlists, setPlaylists] = useState<Playlist[] | null>(cache.playlists ?? null);
+    const [version, rerender] = useReducer((count: number) => count + 1, 0);
     const [playerState, setPlayerState] = useState(() => ({
         queueName: player.queueName,
         isPlaying: player.isPlaying,
@@ -336,49 +341,61 @@ function Home() {
         };
     }, []);
 
-    useEffect(() => {
-        let cancelled = false;
-        const updatePlaylists = (nextPlaylists: Playlist[]) => {
-            if (cancelled) return;
-            setPlaylists(nextPlaylists);
-        };
-        const updateUser = (nextUser: UserAccount) => {
-            if (cancelled) return;
-            setUserAccount(nextUser);
-        };
-
-        setUserAccount(cache.account ?? null);
-        setPlaylists(cache.playlists ?? null);
-        account(cache).then(updateUser).catch(() => {});
-        getPlaylists('me', cache, updatePlaylists, updateUser).then(updatePlaylists);
-
-        return () => {
-            cancelled = true;
-        };
-    }, [cache]);
+    const refreshFrequent = () => {
+        (api(`/plugin/playlists/me?services=local&limit=1`) as Promise<PlaylistsResponse>)
+            .then(data => {
+                if (!Array.isArray(data.frequent)) return;
+                cache.frequentPlaylists = data.frequent;
+                persist(cache);
+                rerender();
+            })
+            .catch(() => {});
+    };
 
     useEffect(() => {
-        if (!userAccount || playlists?.length) return;
-
         let cancelled = false;
-        const timer = window.setTimeout(() => {
-            const services = encodeURIComponent(HOME_PLAYLIST_SERVICES);
-            void api(
-                `/plugin/playlists/${userAccount.id}/cached?services=${services}&limit=${HOME_SERVICE_PLAYLIST_LIMIT}`,
-            )
-                .then(response => {
-                    if (cancelled || !Array.isArray(response) || response.length === 0) return;
-                    cache.playlists = response as Playlist[];
-                    setPlaylists(response as Playlist[]);
+
+        account(cache).then(() => { if (!cancelled) rerender(); }).catch(() => {});
+
+        const hasAnything = SERVICES.some(service => (cache.byService[service]?.length ?? 0) > 0);
+        if (!hasAnything) {
+            const startedAt = Date.now();
+            const services = encodeURIComponent(SERVICES.join(','));
+            (api(`/plugin/playlists/me/cached?services=${services}&limit=${HOME_SERVICE_PLAYLIST_LIMIT}`) as Promise<PlaylistsResponse>)
+                .then(data => {
+                    if (cancelled || !Array.isArray(data?.playlists)) return;
+                    SERVICES.forEach(service => {
+                        if (cache.live.has(service)) return;
+                        const list = data.playlists.filter(playlist => playlist.service === service);
+                        if (list.length === 0) return;
+                        cache.byService[service] = list;
+                        remember(cache, list);
+                    });
+                    flatten(cache);
+                    if (!cache.frequentPlaylists?.length) applyFrequent(cache, data.frequent, startedAt);
+                    rerender();
                 })
                 .catch(() => {});
-        }, 1000);
+        }
+
+        SERVICES.forEach(service => {
+            fetchService(cache, service)
+                .then(() => { if (!cancelled) rerender(); })
+                .catch(() => { if (!cancelled) rerender(); });
+        });
+
+        const refreshOnFocus = () => {
+            if (document.visibilityState === 'visible') refreshFrequent();
+        };
+        window.addEventListener('focus', refreshOnFocus);
+        document.addEventListener('visibilitychange', refreshOnFocus);
 
         return () => {
             cancelled = true;
-            window.clearTimeout(timer);
+            window.removeEventListener('focus', refreshOnFocus);
+            document.removeEventListener('visibilitychange', refreshOnFocus);
         };
-    }, [cache, playlists, userAccount]);
+    }, [cache]);
 
     useEffect(() => player.subscribe(() => {
         setPlayerState({
@@ -387,17 +404,95 @@ function Home() {
         });
     }), []);
 
-    const spotifyPlaylistsAll = (playlists?.filter(p => p.service === 'spotify') ?? []);
-    const spotifyPlaylists = (playlists?.filter(p => p.service === 'spotify') ?? []).slice(0, 10);
+    const playlists = flatten(cache);
+    const forService = (service: Service) => cache.byService[service] ?? [];
 
-    const soundcloudPlaylists = (playlists?.filter(p => p.service === 'soundcloud') ?? []).slice(0, 10);
-    const soundcloudPlaylistsAll = (playlists?.filter(p => p.service === 'soundcloud') ?? []);
+    const spotifyPlaylistsAll = forService('spotify');
+    const soundcloudPlaylistsAll = forService('soundcloud');
+    const youtubePlaylistsAll = forService('youtube');
+    const localPlaylistsAll = forService('local');
 
-    const youtubePlaylists = (playlists?.filter(p => p.service === 'youtube') ?? []).slice(0, 10);
-    const youtubePlaylistsAll = (playlists?.filter(p => p.service === 'youtube') ?? []);
+    const spotifyPlaylists = spotifyPlaylistsAll.slice(0, HOME_VISIBLE_LIMIT);
+    const soundcloudPlaylists = soundcloudPlaylistsAll.slice(0, HOME_VISIBLE_LIMIT);
+    const youtubePlaylists = youtubePlaylistsAll.slice(0, HOME_VISIBLE_LIMIT);
+    const localPlaylists = localPlaylistsAll.slice(0, HOME_VISIBLE_LIMIT);
+    const localLoading = !cache.live.has('local') && localPlaylistsAll.length === 0;
 
-    const localPlaylists = (playlists?.filter(p => p.service === 'local') ?? []).slice(0, 10);
-    const localPlaylistsAll = (playlists?.filter(p => p.service === 'local') ?? []);
+    const lookup = useMemo(() => {
+        const map = new Map<string, Playlist>();
+        cache.known.forEach((playlist, key) => map.set(key, playlist));
+        playlists.forEach(playlist => map.set(playlistKey(playlist), playlist));
+        return map;
+    }, [cache, version]);
+
+    const findPlaylist = (frequent: FrequentPlaylist) => {
+        if (frequent.service) return lookup.get(`${frequent.service}:${frequent.playlist_id}`);
+        for (const playlist of lookup.values()) {
+            if (frequentMatches(frequent, playlist)) return playlist;
+        }
+        return undefined;
+    };
+
+    const frequentPlaylists = cache.frequentPlaylists ?? [];
+    const resolvedFrequentPlaylists = (() => {
+        const seen = new Set<string>();
+        const result: Playlist[] = [];
+        [...frequentPlaylists]
+            .sort((a, b) => a.frequency - b.frequency)
+            .forEach(frequent => {
+                const playlist = findPlaylist(frequent);
+                if (!playlist) return;
+                const key = playlistKey(playlist);
+                if (seen.has(key)) return;
+                seen.add(key);
+                result.push(playlist);
+            });
+        return result.slice(0, FREQUENT_LIMIT);
+    })();
+
+    useEffect(() => {
+        const liveDone = SERVICES.every(service => cache.live.has(service) || cache.serviceRequests[service] === undefined);
+        if (!liveDone) return;
+
+        const missing = new Map<string, Set<string>>();
+        (cache.frequentPlaylists ?? []).forEach(frequent => {
+            if (!frequent.service || lookup.has(`${frequent.service}:${frequent.playlist_id}`)) return;
+            if (!missing.has(frequent.service)) missing.set(frequent.service, new Set());
+            missing.get(frequent.service)!.add(String(frequent.playlist_id));
+        });
+
+        let cancelled = false;
+        missing.forEach((ids, service) => {
+            if (!(SERVICES as readonly string[]).includes(service)) return;
+            const attemptKey = `${cache.key}:${service}:${[...ids].sort().join(',')}`;
+            if (attemptedResolves.has(attemptKey)) return;
+            attemptedResolves.add(attemptKey);
+
+            void (async () => {
+                const remaining = new Set(ids);
+                const found: Playlist[] = [];
+                for (let offset = 0; offset < 200 && remaining.size > 0; offset += 50) {
+                    const data = await api(
+                        `/plugin/playlists/me?services=${service}&limit=50&offset=${offset}`,
+                    ) as PlaylistsResponse;
+                    const page = Array.isArray(data.playlists) ? data.playlists : [];
+                    page.forEach(playlist => {
+                        if (remaining.delete(String(playlist.id))) found.push(playlist);
+                    });
+                    if (page.length < 50) break;
+                }
+                if (found.length > 0) {
+                    remember(cache, found);
+                    persist(cache);
+                    if (!cancelled) rerender();
+                }
+            })().catch(() => {});
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [cache, lookup, version]);
 
     useEffect(() => {
         if (spotifyPlaylistsAll.length > 0) {
@@ -405,8 +500,34 @@ function Home() {
         }
     }, [spotifyPlaylistsAll.length]);
 
-    const activeUser = userAccount ?? { id: '', name: '' };
-    const currentPlaylist = playlists?.find(playlist => playlistQueueName(playlist) === playerState.queueName) ?? null;
+    const activeUser = cache.account ?? { id: '', name: '' };
+    const currentPlaylist = playlists.find(playlist => playlistQueueName(playlist) === playerState.queueName) ?? null;
+
+    const bumpFrequent = (playlist: Playlist) => {
+        cache.lastBumpAt = Date.now();
+        remember(cache, [playlist]);
+        const rest = (cache.frequentPlaylists ?? []).filter(frequent => !frequentMatches(frequent, playlist));
+        cache.frequentPlaylists = [
+            { frequency: 1, playlist_id: playlist.id, service: playlist.service, account_id: activeUser.id },
+            ...rest,
+        ]
+            .slice(0, FREQUENT_LIMIT)
+            .map((frequent, index) => ({ ...frequent, frequency: index + 1 }));
+        persist(cache);
+        rerender();
+    };
+
+    const openPlaylist = (playlist: Playlist) => {
+        bumpFrequent(playlist);
+        navigate(`/playlist/${playlistRouteId(playlist)}`);
+    };
+
+    const registerPlay = (playlist: Playlist) => {
+        bumpFrequent(playlist);
+        void api(`/plugin/playlists/me/${playlistRouteId(playlist)}`)
+            .then(() => refreshFrequent())
+            .catch(() => {});
+    };
 
     const playPlaylist = async (playlist: Playlist) => {
         const key = playlistKey(playlist);
@@ -415,6 +536,7 @@ function Home() {
             return;
         }
 
+        registerPlay(playlist);
         player.activateSource(playlist.service);
         setLoadingPlaylistKey(key);
         try {
@@ -458,7 +580,7 @@ function Home() {
             <div
                 key={key}
                 className={`playlists-home-playlist${isActive ? ' active' : ''}`}
-                onClick={() => navigate(`/playlist/${playlistRouteId(playlist)}`)}
+                onClick={() => openPlaylist(playlist)}
             >
                 <div className='playlists-home-cover-wrap'>
                     <img src={playlist.is_liked_playlist ? liked : playlist.cover ?? unknownArt} alt={playlist.name} className='playlists-home-playlist-cover' loading='lazy' decoding='async' />
@@ -492,10 +614,61 @@ function Home() {
         );
     };
 
+    const renderSkeletons = (count = 6) => Array.from({ length: count }, (_, index) => (
+        <div key={`skeleton-${index}`} className='playlists-home-playlist skeleton' aria-hidden='true'>
+            <div className='playlists-home-cover-wrap skeleton-block' />
+            <div className='playlist-info'>
+                <p className='skeleton-line' />
+                <p className='skeleton-line short' />
+            </div>
+        </div>
+    ));
+
+    const renderGroup = (
+        service: Service,
+        visible: Playlist[],
+        all: Playlist[],
+        title: string,
+        loading = false,
+    ) => (
+        <div className='playlist-group'>
+            <div className='playlist-group-header'>
+                <h2 className='playlist-group-title'>{title}</h2>
+                {all.length > HOME_VISIBLE_LIMIT && (
+                    <button
+                        className='playlist-group-show-all'
+                        type='button'
+                        onClick={() => navigate(`/playlists/${service}`)}
+                    >
+                        {t('home.playlists.show-all')}
+                    </button>
+                )}
+            </div>
+            <div className='playlists-home-playlists'>
+                {loading ? renderSkeletons() : visible.map(renderPlaylist)}
+            </div>
+        </div>
+    );
+
     return (
         <div className='playlists-home'>
-            <h1 className='playlists-home-title'>{t('home.title')}</h1>
-            <p className='playlists-home-description'>{t('home.description.' + descriptionId, { name: activeUser.name })}</p>
+            <div className='playlists-home-header'>
+                <div className='playlists-home-header-filters'>
+                    <button className='playlists-home-header-filter-item active'>All</button>
+                    <button className='playlists-home-header-filter-item'>Music</button>
+                    <button className='playlists-home-header-filter-item'>Podcasts</button>
+                    <button className='playlists-home-header-filter-item'>Audiobooks</button>
+                </div>
+            </div>
+            <div className='playlists-home-frequent'>
+                {resolvedFrequentPlaylists.length > 0 && (
+                    <div className='playlist-group'>
+                        <div className='playlists-home-playlists frequent'>
+                            {resolvedFrequentPlaylists.map(renderPlaylist)}
+                        </div>
+                    </div>
+                )}
+            </div>
             <div className='playlist-home-container'>
                 <div className='playlist-home-container-widgets-small'>
                     {currentPlaylist && (
@@ -510,80 +683,10 @@ function Home() {
                     )}
                 </div>
                 <div className='playlist-home-container-widgets-large'>
-                    <div className='playlist-group'>
-                        <div className='playlist-group-header'>
-                            <h2 className='playlist-group-title'>{t('home.playlists.title.local')}</h2>
-                            {localPlaylistsAll.length > 10 && (
-                                <button
-                                    className='playlist-group-show-all'
-                                    type='button'
-                                    onClick={() => navigate('/playlists/local')}
-                                >
-                                    {t('home.playlists.show-all')}
-                                </button>
-                            )}
-                        </div>
-                        <div className='playlists-home-playlists'>
-                            {localPlaylists.map(renderPlaylist)}
-                        </div>
-                    </div>
-                    {spotifyPlaylists.length > 0 && (
-                        <div className='playlist-group'>
-                            <div className='playlist-group-header'>
-                                <h2 className='playlist-group-title'>{t('home.playlists.title.spotify')}</h2>
-                                {spotifyPlaylistsAll.length > 10 && (
-                                    <button
-                                        className='playlist-group-show-all'
-                                        type='button'
-                                        onClick={() => navigate('/playlists/spotify')}
-                                    >
-                                        {t('home.playlists.show-all')}
-                                    </button>
-                                )}
-                            </div>
-                            <div className='playlists-home-playlists'>
-                                {spotifyPlaylists.map(renderPlaylist)}
-                            </div>
-                        </div>
-                    )}
-                    {soundcloudPlaylists.length > 0 && (
-                        <div className='playlist-group'>
-                            <div className='playlist-group-header'>
-                                <h2 className='playlist-group-title'>{t('home.playlists.title.soundcloud')}</h2>
-                                {soundcloudPlaylistsAll.length > 10 && (
-                                    <button
-                                        className='playlist-group-show-all'
-                                        type='button'
-                                        onClick={() => navigate('/playlists/soundcloud')}
-                                    >
-                                        {t('home.playlists.show-all')}
-                                    </button>
-                                )}
-                            </div>
-                            <div className='playlists-home-playlists'>
-                                {soundcloudPlaylists.map(renderPlaylist)}
-                            </div>
-                        </div>
-                    )}
-                    {youtubePlaylists.length > 0 && (
-                        <div className='playlist-group'>
-                            <div className='playlist-group-header'>
-                                <h2 className='playlist-group-title'>{t('home.playlists.title.youtube')}</h2>
-                                {youtubePlaylistsAll.length > 10 && (
-                                    <button
-                                        className='playlist-group-show-all'
-                                        type='button'
-                                        onClick={() => navigate('/playlists/youtube')}
-                                    >
-                                        {t('home.playlists.show-all')}
-                                    </button>
-                                )}
-                            </div>
-                            <div className='playlists-home-playlists'>
-                                {youtubePlaylists.map(renderPlaylist)}
-                            </div>
-                        </div>
-                    )}
+                    {renderGroup('local', localPlaylists, localPlaylistsAll, t('home.playlists.title.local'), localLoading)}
+                    {spotifyPlaylists.length > 0 && renderGroup('spotify', spotifyPlaylists, spotifyPlaylistsAll, t('home.playlists.title.spotify'))}
+                    {soundcloudPlaylists.length > 0 && renderGroup('soundcloud', soundcloudPlaylists, soundcloudPlaylistsAll, t('home.playlists.title.soundcloud'))}
+                    {youtubePlaylists.length > 0 && renderGroup('youtube', youtubePlaylists, youtubePlaylistsAll, t('home.playlists.title.youtube'))}
                 </div>
             </div>
         </div>

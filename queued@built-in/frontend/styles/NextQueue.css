@@ -1,0 +1,43 @@
+.next-queue {
+    width: 100%;
+    height: auto;
+    padding: 5px;
+    background-color: var(--clr-surface-a20);
+    border: 1px solid var(--clr-surface-a30);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    margin-top: 10px;
+}
+
+.next-queue-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 5px;
+}
+
+.next-queue-open {
+    background-color: transparent;
+    border: none;
+    padding: 0px;
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--clr-text-a20);
+}
+
+.next-queue-open:hover {
+    background-color: transparent;
+    border: none;
+    color: var(--clr-text-a40);
+}
+
+.next-queue-text {
+    color: var(--clr-text-a0);
+    font-size: 15px;
+}
+
+.next-queue .queue-song-item {
+    animation: none;
+}

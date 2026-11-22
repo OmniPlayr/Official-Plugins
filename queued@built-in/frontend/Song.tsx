@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
 import { Play } from 'lucide-react';
 import unknownArt from '../../assets/images/unknown-art.svg';
-import { getCachedMetadata, metadataFromQueueItem } from './metadata';
+import { metadataFromQueueItem } from './metadata';
 import type { QueueSection, QueueSong, SongMetadata } from './types';
 
 export default function Song({
@@ -29,32 +28,10 @@ export default function Song({
     onDrop?: (section: QueueSection, index: number, position: 'before' | 'after') => void;
     onDragEnd?: () => void;
 }) {
-    const [ metadata, setMetadata ] = useState<SongMetadata | null>(song.metadata);
-
-    useEffect(() => {
-        const fallbackMetadata = metadataFromQueueItem(song.item);
-        const initialMetadata = song.metadata ?? fallbackMetadata;
-        setMetadata(initialMetadata);
-
-        if (typeof initialMetadata?.album_art === 'string') {
-            setMetadata(initialMetadata);
-            return;
-        }
-
-        let cancelled = false;
-
-        getCachedMetadata(song.item).then((metadata) => {
-            if (cancelled) return;
-            setMetadata(metadata ? { ...initialMetadata, ...metadata } : initialMetadata);
-        }).catch(() => {
-            if (cancelled) return;
-            setMetadata(initialMetadata);
-        });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [song]);
+    const playerMetadata = song.item.metadata;
+    const metadata = (playerMetadata
+        ? { ...metadataFromQueueItem(song.item), ...song.metadata, ...playerMetadata }
+        : song.metadata ?? metadataFromQueueItem(song.item)) as SongMetadata | null;
 
     const albumArt = typeof metadata?.album_art === 'string' ? metadata.album_art : unknownArt;
     const title = metadata?.title ?? metadata?.filename ?? 'Unknown';
