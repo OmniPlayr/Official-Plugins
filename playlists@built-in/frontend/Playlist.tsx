@@ -9,6 +9,8 @@ import liked from './assets/liked.svg';
 import unknownArt from '../../assets/images/unknown-art.svg';
 import unknownAvatar from '../../assets/images/unknown-profile.svg';
 
+import { markPlaylistPlayed } from './playlist-actions';
+
 import {
     api,
     getAccount,
@@ -144,7 +146,13 @@ function formatDuration(value: number) {
         : `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
-function queueItem(song: PlaylistSong, playlist: Playlist): QueueItem {
+type PlaylistQueueItem = QueueItem & {
+    metadata?: PlaylistSongMetadata;
+};
+
+function queueItem(song: PlaylistSong, playlist: Playlist): PlaylistQueueItem {
+    const albumArt = song.metadata.album_art ?? null;
+
     return {
         songId: song.song_id,
         sourceType: song.source_type,
@@ -152,11 +160,17 @@ function queueItem(song: PlaylistSong, playlist: Playlist): QueueItem {
             artist: song.metadata.artist,
             title: song.metadata.title,
             album: song.metadata.album,
+            albumArt,
+            album_art: albumArt,
             spotifyUri: song.spotify_uri,
             playlistService: playlist.service,
             playlistId: playlist.id,
             playlistName: playlist.name,
             playlistPosition: song.position,
+        },
+        metadata: {
+            ...song.metadata,
+            album_art: albumArt,
         },
     };
 }
@@ -779,11 +793,12 @@ function Playlist() {
         if (songs.length === 0) return;
 
         primePlaylistPlayback();
+        void markPlaylistPlayed(playlist).catch(() => {});
         const resolvedIndex = Math.max(0, Math.min(startIndex, songs.length - 1));
         const selected = queueItem(songs[resolvedIndex], playlist);
         const remainingSongs = shuffled
             ? songs.filter((_, index) => index !== resolvedIndex)
-            : songs.slice(resolvedIndex + 1);
+            : [...songs.slice(resolvedIndex + 1), ...songs.slice(0, resolvedIndex)];
 
         player.clearPriorityQueue();
         player.clearNextQueue();

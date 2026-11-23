@@ -2,6 +2,7 @@
 enabled = "bool # comment: Cache playlist responses as JSON # liveupdate:true"
 cache_dir = "str # comment: Directory used for playlist JSON cache files"
 refresh_in_background = "bool # comment: Refresh stale cache entries without delaying the current response # liveupdate:true"
+playlist_ttl_seconds = "int # comment: Seconds before cached playlist collections are refreshed # liveupdate:true"
 song_ttl_seconds = "int # comment: Seconds before a cached playlist track list is refreshed in the background # liveupdate:true"
 
 [streaming]

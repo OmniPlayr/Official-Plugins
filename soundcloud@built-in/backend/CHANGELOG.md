@@ -18,6 +18,8 @@ All notable changes to `soundcloud@built-in` are documented here. This changelog
 
 ## [2.1.0] - 2026-07-06
 
+### Changed
+
 - Backend: Switched imports to the new SDK.
 
 ## [2.0.0] - 2026-07-02

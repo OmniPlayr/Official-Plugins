@@ -12,6 +12,8 @@ All notable changes to `mp3@built-in` are documented here. This changelog follow
 
 ## [2.0.0] - 2026-07-06
 
+### Changed
+
 - Switched imports to the new SDK.
 
 ## [1.2.1] - 2026-06-21

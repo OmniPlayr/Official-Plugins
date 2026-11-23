@@ -1,4 +1,5 @@
 import './styles/Home.css';
+import { markPlaylistPlayed } from './playlist-actions';
 import translations from './translations';
 import { useEffect, useMemo, useReducer, useState } from 'react';
 import liked from './assets/liked.svg';
@@ -44,6 +45,11 @@ export type PlaylistSongMetadata = {
     title: string;
     artist: string;
     album: string;
+    album_art?: string | null;
+};
+
+type PlaylistQueueItem = QueueItem & {
+    metadata?: PlaylistSongMetadata & { album_art: string | null };
 };
 
 export type PlaylistSong = {
@@ -201,7 +207,9 @@ export function playlistQueueName(playlist: Playlist) {
     return `playlist:${playlist.service}:${playlist.id}`;
 }
 
-export function queueItem(song: PlaylistSong, playlist: Playlist): QueueItem {
+export function queueItem(song: PlaylistSong, playlist: Playlist): PlaylistQueueItem {
+    const albumArt = song.metadata.album_art ?? null;
+
     return {
         songId: song.song_id,
         sourceType: song.source_type,
@@ -209,23 +217,29 @@ export function queueItem(song: PlaylistSong, playlist: Playlist): QueueItem {
             artist: song.metadata.artist,
             title: song.metadata.title,
             album: song.metadata.album,
+            albumArt,
+            album_art: albumArt,
             spotifyUri: song.spotify_uri,
             playlistService: playlist.service,
             playlistId: playlist.id,
             playlistName: playlist.name,
             playlistPosition: song.position,
         },
+        metadata: {
+            ...song.metadata,
+            album_art: albumArt,
+        },
     };
 }
 
 export async function getPlaylistSongs(cache: HomeCache, playlist: Playlist, onUpdate?: (songs: PlaylistSong[]) => void) {
     const key = playlistKey(playlist);
-    if (cache.songs?.has(key)) return cache.songs.get(key)!;
     if (cache.songRequests?.has(key)) return cache.songRequests.get(key)!;
+    if (cache.songs?.has(key)) return cache.songs.get(key)!;
 
     const request = (async () => {
         const response = await api(
-            `/plugin/playlists/me/${playlistRouteId(playlist)}/stream`,
+            `/plugin/playlists/me/${playlistRouteId(playlist)}/stream?fast=1`,
             undefined,
             undefined,
             true,
@@ -238,23 +252,57 @@ export async function getPlaylistSongs(cache: HomeCache, playlist: Playlist, onU
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
+        const imageAssets = new Map<string, string>();
+        let pendingSongChanges = 0;
+        let hasPublishedFirstSong = false;
+
+        const publishSongs = (force = false) => {
+            if (!onUpdate || pendingSongChanges === 0) return;
+            if (!force && !hasPublishedFirstSong && songs.length > 0) {
+                hasPublishedFirstSong = true;
+            } else if (!force && pendingSongChanges < 10) {
+                return;
+            }
+            pendingSongChanges = 0;
+            onUpdate([...songs]);
+        };
 
         const consumeLine = (line: string) => {
             if (!line.trim()) return;
-            const event = JSON.parse(line) as { type: string; song?: PlaylistSong; cached?: boolean };
+            const event = JSON.parse(line) as {
+                type: string;
+                song?: Omit<PlaylistSong, 'metadata'> & {
+                    metadata: Omit<PlaylistSongMetadata, 'album_art'> & { album_art?: unknown };
+                };
+                images?: { id: string; asset: string }[];
+                cached?: boolean;
+            };
+            event.images?.forEach(({ id, asset }) => imageAssets.set(id, asset));
             if (event.type !== 'song' || !event.song) return;
 
-            const songKey = `${event.song.source_type}:${event.song.song_id}:${event.song.spotify_uri ?? ''}`;
+            const albumArt = event.song.metadata.album_art;
+            const song: PlaylistSong = {
+                ...event.song,
+                metadata: {
+                    ...event.song.metadata,
+                    album_art: typeof albumArt === 'string'
+                        ? albumArt
+                        : albumArt && typeof albumArt === 'object' && 'asset_id' in albumArt
+                            ? imageAssets.get(String(albumArt.asset_id)) ?? null
+                            : null,
+                },
+            };
+            const songKey = `${song.source_type}:${song.song_id}:${song.spotify_uri ?? ''}`;
             const existingIndex = songIndexes.get(songKey);
             if (existingIndex === undefined) {
                 songIndexes.set(songKey, songs.length);
-                songs.push(event.song);
+                songs.push(song);
             } else {
-                songs[existingIndex] = event.song;
+                songs[existingIndex] = song;
             }
 
-            cache.songs?.set(key, [...songs]);
-            onUpdate?.([...songs]);
+            pendingSongChanges += 1;
+            publishSongs();
         };
 
         while (true) {
@@ -266,6 +314,7 @@ export async function getPlaylistSongs(cache: HomeCache, playlist: Playlist, onU
             if (done) break;
         }
         consumeLine(buffer);
+        publishSongs(true);
 
         cache.songs?.set(key, songs);
         return songs;
@@ -518,16 +567,24 @@ function Home() {
     };
 
     const openPlaylist = (playlist: Playlist) => {
-        bumpFrequent(playlist);
         navigate(`/playlist/${playlistRouteId(playlist)}`);
     };
 
     const registerPlay = (playlist: Playlist) => {
-        bumpFrequent(playlist);
-        void api(`/plugin/playlists/me/${playlistRouteId(playlist)}`)
+        void markPlaylistPlayed(playlist)
             .then(() => refreshFrequent())
             .catch(() => {});
     };
+
+    useEffect(() => {
+        const handlePlaylistPlayed = (event: Event) => {
+            const playlist = (event as CustomEvent<Playlist>).detail;
+            if (playlist) bumpFrequent(playlist);
+        };
+
+        window.addEventListener('playlist-played', handlePlaylistPlayed);
+        return () => window.removeEventListener('playlist-played', handlePlaylistPlayed);
+    }, [cache, activeUser.id]);
 
     const playPlaylist = async (playlist: Playlist) => {
         const key = playlistKey(playlist);
@@ -536,7 +593,6 @@ function Home() {
             return;
         }
 
-        registerPlay(playlist);
         player.activateSource(playlist.service);
         setLoadingPlaylistKey(key);
         try {
@@ -544,16 +600,19 @@ function Home() {
             let playback: Promise<void> | null = null;
 
             const startFromSongs = (songs: PlaylistSong[]) => {
-                if (started || songs.length === 0) return;
-                started = true;
+                if (songs.length === 0) return;
 
-                const [firstSong, ...remainingSongs] = songs;
-                const firstItem = queueItem(firstSong, playlist);
+                if (!started) {
+                    started = true;
+                    registerPlay(playlist);
+                    const firstItem = queueItem(songs[0], playlist);
+                    player.clearPriorityQueue();
+                    player.clearNextQueue();
+                    playback = player.playSong(firstItem.songId, firstItem.sourceType, firstItem.extra, true);
+                    setLoadingPlaylistKey(current => current === key ? null : current);
+                }
 
-                player.clearPriorityQueue();
-                player.clearNextQueue();
-                playback = player.playSong(firstItem.songId, firstItem.sourceType, firstItem.extra, true);
-                player.setNextQueue(playlistQueueName(playlist), remainingSongs.map(song => queueItem(song, playlist)));
+                player.setNextQueue(playlistQueueName(playlist), songs.slice(1).map(song => queueItem(song, playlist)));
             };
 
             const songs = await getPlaylistSongs(cache, playlist, startFromSongs);

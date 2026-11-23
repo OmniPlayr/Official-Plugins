@@ -4,7 +4,7 @@ import {
     type SourcePlugin,
     type TrackMetadata
 } from '@omniplayr/plugins';
-import { sdkPlay, sdkPause, sdkResume, sdkSeek, sdkSetVolume, sdkPrimeActivation, onStateChange, getState, sdkReconnectNow } from './sdk';
+import { trackMatchesSong, sdkPlay, sdkPause, sdkResume, sdkSeek, sdkSetVolume, sdkPrimeActivation, onStateChange, getState, sdkReconnectNow } from './sdk';
 import type { SpotifyState } from './sdk';
 
 const VOLUME_STORAGE_KEY = 'player_volume';
@@ -42,7 +42,7 @@ function waitForSpotifyTrackState(
             if (settled) return;
 
             const track = state.track_window?.current_track;
-            if (track?.id !== songId) return;
+            if (!trackMatchesSong(track, songId)) return;
             if (requirePlaying && state.paused) return;
 
             settled = true;
@@ -129,8 +129,8 @@ export default class SpotifySourcePlugin implements SourcePlugin {
                 return;
             }
 
-            const trackId = state.track_window?.current_track?.id ?? null;
-            if (this.activeSongId && trackId && trackId !== this.activeSongId) return;
+            const currentTrack = state.track_window?.current_track;
+            if (this.activeSongId && currentTrack && !trackMatchesSong(currentTrack, this.activeSongId)) return;
 
             const previousPosition = this.lastPosition;
             const duration = state.duration || 0;

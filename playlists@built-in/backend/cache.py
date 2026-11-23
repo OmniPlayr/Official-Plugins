@@ -45,6 +45,15 @@ def song_cache_path(user_id: int, service: str, playlist_id) -> Path:
     return cache_dir() / safe_cache_part(user_id) / service / f"{safe_cache_part(playlist_id)}.songs-v1.json"
 
 
+def cache_is_stale(path: Path, ttl_seconds: int) -> bool:
+    if ttl_seconds <= 0:
+        return True
+    try:
+        return time.time() - path.stat().st_mtime >= ttl_seconds
+    except OSError:
+        return True
+
+
 def read_json(path: Path, cache_enabled=None):
     if cache_enabled is None:
         cache_enabled = bool(config("cache.enabled", True))
@@ -77,9 +86,11 @@ def write_detail(user_id: int, service: str, playlist_id, playlist) -> None:
     write_json(cache_path(user_id, service, playlist_id, detail=True), playlist)
 
 
-def read_song_cache(user_id: int, service: str, playlist_id):
+def read_song_cache(user_id: int, service: str, playlist_id, allow_incomplete: bool = False):
     cached = read_json(song_cache_path(user_id, service, playlist_id))
-    if not isinstance(cached, dict) or not cached.get("complete") or not isinstance(cached.get("songs"), list):
+    if not isinstance(cached, dict) or not isinstance(cached.get("songs"), list):
+        return None
+    if not cached.get("complete") and not allow_incomplete:
         return None
     for song in cached["songs"]:
         metadata = song.get("metadata") if isinstance(song, dict) else None

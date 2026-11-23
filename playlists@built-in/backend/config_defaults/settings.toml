@@ -2,6 +2,7 @@
 enabled = true
 cache_dir = "user_storage/playlist-cache"
 refresh_in_background = true
+playlist_ttl_seconds = 900
 song_ttl_seconds = 300
 
 [streaming]
@@ -17,7 +18,7 @@ check_youtube_playlists = true
 load_all_playlists = true
 request_page_size = 50
 display_batch_size = 10
-display_batch_delay_ms = 50
+display_batch_delay_ms = 0
 max_playlist_pages = 100
 song_page_size = 50
 song_display_batch_size = 20
@@ -29,7 +30,7 @@ max_song_pages = 100
 load_all_playlists = true
 request_page_size = 50
 display_batch_size = 10
-display_batch_delay_ms = 50
+display_batch_delay_ms = 0
 max_playlist_pages = 100
 song_page_size = 50
 song_display_batch_size = 20
@@ -41,7 +42,7 @@ max_song_pages = 100
 load_all_playlists = true
 request_page_size = 50
 display_batch_size = 10
-display_batch_delay_ms = 50
+display_batch_delay_ms = 0
 max_playlist_pages = 100
 song_page_size = 50
 song_display_batch_size = 20

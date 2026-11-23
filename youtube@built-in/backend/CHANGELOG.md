@@ -4,6 +4,19 @@ All notable changes to `youtube@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-11-23
+
+### Added
+
+- Added fallback to yt-dlp metadata when YouTube Music metadata lookup does not return a title.
+- Reused stream extraction metadata so the fallback can share the resolved stream URL cache.
+
+### Fixed
+
+- Resume interrupted upstream audio streams even when the client did not send an initial byte-range request.
+- Retry transient stream-resolution failures instead of caching them as unavailable tracks.
+- Increased yt-dlp extraction and fragment retry counts.
+
 ## [1.0.5] - 2026-11-23
 
 ### Fixed

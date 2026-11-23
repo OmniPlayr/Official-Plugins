@@ -2,6 +2,8 @@
 
 Play your local audio files with OmniPlayr. This plugin registers itself as an audio source and streams files directly from a folder on your server, no importing, no transcoding, no cloud required.
 
+**Version:** Backend `2.0.1`
+
 You can find this plugin at:
 **[https://omniplayr.wokki20.nl/packages/package/mp3@built-in](https://omniplayr.wokki20.nl/packages/package/mp3@built-in)**
 
@@ -34,12 +36,18 @@ Everything runs locally on your server. No internet connection is needed.
 
 ## Configuration
 
-The plugin is configured via `config.toml`:
+The plugin configuration is split into two files.
+
+`config/storage.toml`:
 
 ```toml
 [storage]
 mp3_music_dir = "/user_storage/music"
+```
 
+`config/streaming.toml`:
+
+```toml
 [streaming]
 default_chunk_size = 65_536
 ```

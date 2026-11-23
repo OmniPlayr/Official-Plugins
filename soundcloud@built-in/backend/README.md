@@ -2,6 +2,8 @@
 
 Play SoundCloud tracks inside OmniPlayr and expose SoundCloud playlists to `playlists@built-in`.
 
+**Versions:** Backend `2.1.2` | Frontend `2.1.1`
+
 You can find this plugin at:
 **[https://omniplayr.wokki20.nl/packages/package/soundcloud@built-in](https://omniplayr.wokki20.nl/packages/package/soundcloud@built-in)**
 
@@ -26,6 +28,7 @@ Public SoundCloud URLs work in basic mode without SoundCloud OAuth. Private play
 
 ## Requirements
 
+- OmniPlayr development version `2026.7.6` or newer
 - A public SoundCloud URL for basic playback
 - A SoundCloud account for private playlists and account library access
 - A SoundCloud developer app with a registered redirect URI for connected mode
@@ -74,7 +77,7 @@ Used for SoundCloud OAuth, profile, playlist, and metadata requests.
 
 ## Configuration
 
-The backend is configured via `api.toml`:
+The backend is configured via `config/api.toml`:
 
 ```toml
 [api]

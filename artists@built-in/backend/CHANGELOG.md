@@ -4,6 +4,17 @@ All notable changes to `artists@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.1.3] - 2026-11-23
+
+### Changed
+
+- Backend: Rate-limited MusicBrainz requests to one request per second.
+
+### Fixed
+
+- Backend: Added retries for transient MusicBrainz rate-limit, server, connection, and timeout failures, respecting `Retry-After` when provided.
+- Backend: The artist existence endpoint now distinguishes temporary MusicBrainz outages from confirmed missing results by returning an `unknown` status and marking the result as retryable.
+
 ## [2.1.2] - 2026-07-13
 
 ### Fixed
@@ -15,17 +26,18 @@ All notable changes to `artists@built-in` are documented here. This changelog fo
 
 ### Added
 
-- Frontend: Made it so when there are multiple artists for a song, and it detects an `&` in the artist name, it splits the artist name and displays them separately.
+- Frontend: When a song has multiple artists and the artist string contains `&`, split and display the artists separately.
 
 ## [2.1.0] - 2026-07-06
 
-- Backend: Switched imports to the new SDK.
+### Changed
+
+- Backend and frontend: Switched imports to the new SDK.
 
 ## [2.0.0] - 2026-07-02
 
 ### Changed
 
-- Frontend: Switched imports to the new SDK.
 - Frontend: Switched text rendering to plugin translations.
 
 ## [1.2.0] - 2026-06-29
@@ -37,7 +49,7 @@ All notable changes to `artists@built-in` are documented here. This changelog fo
 - Added an admin-only option to save the Genius token for all accounts.
 - Added a no-token state for artist and album pages when the current account has not configured a token.
 - Moved artists plugin frontend text into plugin-local i18n resources.
-- Added `min-dev-version` field in package.json
+- Added the `min-dev-version` field to `package.json`.
 
 ### Changed
 

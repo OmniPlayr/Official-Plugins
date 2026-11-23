@@ -1,6 +1,8 @@
 # queued@built-in
 
-View and manage the OmniPlayr queue from a dedicated side tab. This frontend plugin shows the current song, manually queued songs, and upcoming songs, with drag-and-drop reordering for supported queue sections.
+View and manage the OmniPlayr queue through a dedicated InfoBar. This frontend plugin shows the current song, manually queued songs, and upcoming songs, with drag-and-drop reordering for supported queue sections.
+
+**Version:** Frontend `1.1.0`
 
 You can find this plugin at:
 **[https://omniplayr.wokki20.nl/packages/package/queued@built-in](https://omniplayr.wokki20.nl/packages/package/queued@built-in)**
@@ -12,15 +14,23 @@ You can find this plugin at:
 `queued@built-in` adds queue controls directly to the player:
 
 - Add a queue button beside the player controls
-- Open the queue in a resizable dashboard side tab
+- Open the queue in the shared OmniPlayr InfoBar
 - Show the currently playing song, priority queue, and next-up queue
+- Show a next-track preview in the song information area
 - Play any visible queue item immediately
 - Reorder manually queued items with drag and drop
 - Load long queues incrementally
-- Resolve richer metadata and artwork for visible queue items
+- Read title, artist, album, and album artwork directly from queue-item metadata
+- Keep artwork attached to queue entries so covers can be rendered without a separate lookup
 - Open the queue in a popup on mobile through the `queue.mobile:open` event
 
 The plugin is frontend-only. It uses OmniPlayr's player APIs and does not add backend routes.
+
+---
+
+## Requirements
+
+- OmniPlayr development version `2026.11.2` or newer, with the InfoBar API
 
 ---
 
@@ -41,7 +51,7 @@ Without `playlists@built-in`, the queue still works with metadata already availa
 
 | Layer | Responsibility |
 |-------|----------------|
-| **Frontend** | Queue side-tab rendering, player queue reads, queue reordering, playlist metadata enrichment, and shared side-tab state |
+| **Frontend** | InfoBar rendering, player queue reads, queue reordering, queue metadata and artwork rendering, and playlist metadata enrichment |
 
 ### Queue sections
 
@@ -59,14 +69,14 @@ Priority queue items and next-up items can be reordered within their own section
 
 ## UI integration
 
-`queued@built-in` mounts into these OmniPlayr frontend hooks:
+`queued@built-in` integrates with these OmniPlayr frontend extension points:
 
-| Hook | Purpose |
-|------|---------|
-| `Dashboard.dashboard-hor` | Adds the queue side tab |
+| Hook or API | Purpose |
+|-------------|---------|
 | `Player.plugin-target-before-volume-option` | Adds the queue toggle button |
-
-The side tab shares width and active-tab state with other compatible side-tab plugins, including `lyrics@built-in` and `devices@built-in`.
+| `Infobar.ib-song-more-info` | Renders the next-track preview in the song information area |
+| `registerInfobar` | Registers the queue InfoBar view |
+| `queue.mobile:open` | Opens the queue in a mobile popup |
 
 ---
 

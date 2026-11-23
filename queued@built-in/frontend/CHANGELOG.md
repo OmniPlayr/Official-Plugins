@@ -6,9 +6,16 @@ All notable changes to `queued@built-in` are documented here. This changelog fol
 
 ## [1.1.0] - 2026-11-22
 
+### Added
+
+- Added a next-track preview in the song information area.
+- Added queue-item metadata and artwork rendering so track covers can be read directly from queue metadata.
+- Kept the mobile queue popup entry point through the `queue.mobile:open` event.
+
 ### Changed
 
-- Updated the plugin to use the new Infobar
+- Updated the plugin to use OmniPlayr's shared InfoBar API instead of the legacy dashboard side-tab integration.
+- Updated the queue control and active state to follow the currently selected InfoBar.
 
 ## [1.0.2] - 2026-07-15
 
@@ -23,7 +30,7 @@ All notable changes to `queued@built-in` are documented here. This changelog fol
 
 ### Changed
 
-- Changed the required min dev version to 2026.7.22.
+- Changed the required minimum development version to `2026.7.22`.
 
 ## [1.0.0] - 2026-07-11
 

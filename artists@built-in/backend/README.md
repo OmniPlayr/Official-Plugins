@@ -2,6 +2,8 @@
 
 Adds full artist and album profile pages to OmniPlayr. Click any artist or album name in the player and instantly get a rich profile pulled from MusicBrainz, Genius, and the Cover Art Archive: biography, genres, discography, tracklists, cover art, and more.
 
+**Versions:** Backend `2.1.3` | Frontend `2.1.2`
+
 You can find this plugin at:
 **[https://omniplayr.wokki20.nl/packages/package/artists@built-in](https://omniplayr.wokki20.nl/packages/package/artists@built-in)**
 
@@ -48,6 +50,8 @@ If you notice missing or incorrect information, submitting corrections to those 
 
 ## Requirements
 
+- OmniPlayr development version `2026.7.6` or newer
+
 ### Genius API token
 
 This plugin requires a Genius Client Access Token to fetch artist bios and images.
@@ -67,7 +71,9 @@ Admins can enable **Apply to all accounts** while saving a token. That writes th
 
 ## Configuration
 
-The plugin is configured via `config.toml`:
+The plugin configuration is split between `config/api.toml` and `config/cache.toml`.
+
+`config/api.toml`:
 
 ```toml
 [api]
@@ -77,7 +83,11 @@ genius_base_url = "https://api.genius.com"
 
 [api.request]
 user_agent = "OmniPlayr-ArtistLookup/0.0.1"
+```
 
+`config/cache.toml`:
+
+```toml
 [cache]
 cache_dir = "/user_storage/artists-cache"
 ```
@@ -112,7 +122,8 @@ Example:
 
 ```json
 {
-  "token_set": true
+  "token_set": true,
+  "is_admin": false
 }
 ```
 
@@ -150,9 +161,9 @@ Checks whether an artist exists without returning the full artist or album profi
 | `song` | `string` | Optional - a song name to verify for that artist, and for the album when `album` is also provided |
 | `no_cache` | `bool` | Skip the disk cache and check MusicBrainz directly |
 
-**Response fields:** `exists`, `artist_exists`, `album_exists`, `song_exists`, `accuracy`, `elapsed_ms`, `from_cache`
+**Response fields:** `exists`, `artist_exists`, `album_exists`, `song_exists`, `status`, `accuracy`, `elapsed_ms`, `from_cache`, `error`, `retryable`
 
-`exists` mirrors `artist_exists`. `album_exists` and `song_exists` are `null` when their matching query parameter is not provided.
+`exists` mirrors `artist_exists`. `album_exists` and `song_exists` are `null` when their matching query parameter is not provided. If MusicBrainz is temporarily unavailable, the response uses `status: "unknown"`, sets the relevant existence values to `null`, and returns `retryable: true` instead of reporting a false negative.
 
 Example:
 
@@ -218,7 +229,9 @@ Each response includes an `accuracy` field (a float between 0 and 1) representin
 
 Profiles are cached on two levels:
 
-- **Disk cache** - JSON files stored in `cache_dir` persist between server restarts. Artist and album files are stored separately and named after the artist/album.
+- **Disk cache** - JSON files stored in `cache_dir` persist between server restarts. Artist and album files are stored separately and named after the artist or album.
 - **In-memory cache** - the frontend caches responses in a `Map` for the duration of the session, so navigating back to a profile is instant.
+
+MusicBrainz requests are rate-limited to one request per second. Transient rate-limit, server, connection, and timeout failures are retried, and `Retry-After` is respected when provided by MusicBrainz.
 
 To force a fresh fetch, add `?no_cache=true` to the API request or refresh the page while holding a reload.

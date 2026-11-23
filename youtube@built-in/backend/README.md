@@ -2,6 +2,8 @@
 
 Listen to YouTube Music tracks inside OmniPlayr and expose YouTube Music playlists to `playlists@built-in`.
 
+**Versions:** Backend `1.0.6` | Frontend `1.0.3`
+
 You can find this plugin at:
 **[https://omniplayr.wokki20.nl/packages/package/youtube@built-in](https://omniplayr.wokki20.nl/packages/package/youtube@built-in)**
 
@@ -25,6 +27,7 @@ Public YouTube Music tracks can be streamed by ID. Account playlists require the
 
 ## Requirements
 
+- OmniPlayr development version `2026.7.6` or newer
 - A Google account with YouTube Music access
 - A Google Cloud project with **YouTube Data API v3** enabled
 - An OAuth client ID configured as **TVs and Limited Input devices**
@@ -49,7 +52,7 @@ Google requires a custom OAuth client for `ytmusicapi` OAuth connections. The cr
 
 ## Configuration
 
-The plugin is configured via `settings.toml`:
+The plugin is configured via `config/settings.toml`. Defaults are supplied by `config_defaults/settings.toml`.
 
 ```toml
 [oauth]

@@ -18,7 +18,7 @@ _DEFAULT_AUDIO_QUALITY = "bestaudio[ext=m4a]/bestaudio[acodec^=mp4a]/bestaudio/b
 _SONG_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{11}$")
 _RETRYABLE_HTTP_STATUSES = {408, 425, 429, 500, 502, 503, 504}
 _REFRESHABLE_HTTP_STATUSES = {401, 403, 404, 410}
-_MAX_STREAM_READ_RETRIES = 2
+_MAX_STREAM_READ_RETRIES = 3
 _stream_url_cache: OrderedDict[tuple[str, str], dict] = OrderedDict()
 _stream_url_cache_lock = RLock()
 _stream_resolve_locks: dict[tuple[str, str], RLock] = {}
@@ -133,11 +133,11 @@ def _is_permanently_unavailable(message: str) -> bool:
 def _stream_error(song_id: str, audio_quality: str, error: Exception, *, cache: bool = True):
     message = _YTDLPLogger._write_message(str(error)) or error.__class__.__name__
     not_found = _is_permanently_unavailable(message)
-    if cache:
+    if cache and not_found:
         _cache_put(
             (song_id, audio_quality),
             error=message,
-            not_found=not_found,
+            not_found=True,
         )
     safe_message = _yt_dlp_logger._write_message(message)
     log(f"YouTube stream resolution failed for song_id={song_id}: {safe_message}", "warning")
@@ -169,10 +169,10 @@ def get_stream_url(song_id: str, audio_quality: str = _DEFAULT_AUDIO_QUALITY):
                 "noplaylist": True,
                 "skip_download": True,
                 "socket_timeout": 20,
-                "extractor_retries": 3,
-                "retries": 3,
-                "fragment_retries": 3,
-                "file_access_retries": 2,
+                "extractor_retries": 5,
+                "retries": 5,
+                "fragment_retries": 5,
+                "file_access_retries": 3,
                 "logger": _yt_dlp_logger,
             }) as ydl:
                 info = ydl.extract_info(
@@ -185,16 +185,42 @@ def get_stream_url(song_id: str, audio_quality: str = _DEFAULT_AUDIO_QUALITY):
 
         if not isinstance(info, dict) or not info.get("url"):
             error = StreamUnavailableError("YouTube did not return a playable audio stream")
-            _cache_put(cache_key, error=str(error))
             log(f"YouTube stream unavailable for song_id={song_id}: {error}", "warning")
             raise error
 
         http_headers = info.get("http_headers") or {}
+        duration = info.get("duration")
+        try:
+            duration = int(duration) if duration is not None else None
+        except (TypeError, ValueError, OverflowError):
+            duration = None
+
+        release_date = str(info.get("release_date") or info.get("upload_date") or "")
+        artists = info.get("artists") or []
+        if isinstance(artists, list):
+            artist_names = [
+                str(item.get("name") if isinstance(item, dict) else item).strip()
+                for item in artists
+                if item
+            ]
+        else:
+            artist_names = [str(artists).strip()] if artists else []
+        metadata = {
+            "title": info.get("track") or info.get("title"),
+            "artist": info.get("artist") or ", ".join(name for name in artist_names if name) or info.get("uploader") or info.get("channel"),
+            "album": info.get("album"),
+            "album_artist": info.get("album_artist"),
+            "year": info.get("release_year") or (release_date[:4] if len(release_date) >= 4 else None),
+            "track": info.get("track_number"),
+            "duration": duration,
+            "thumbnail": info.get("thumbnail"),
+        }
         result = {
             "url": info["url"],
             "http_headers": http_headers,
             "mime_type": _mime_from_ext(info.get("ext")) or info.get("mime_type"),
-            "file_size": info.get("filesize"),
+            "file_size": info.get("filesize") or info.get("filesize_approx"),
+            "metadata": metadata,
         }
         _cache_put(cache_key, data=result)
         log(
@@ -217,6 +243,11 @@ def _mime_from_ext(ext: str | None) -> str | None:
     if ext == "opus":
         return "audio/ogg"
     return None
+
+
+def get_stream_metadata(song_id: str, audio_quality: str = _DEFAULT_AUDIO_QUALITY) -> dict | None:
+    metadata = get_stream_url(song_id, audio_quality).get("metadata")
+    return metadata.copy() if isinstance(metadata, dict) else None
 
 
 def get_content_type(song_id: str, audio_quality: str = _DEFAULT_AUDIO_QUALITY):
@@ -383,7 +414,7 @@ def _response_chunks(response, song_id: str, audio_quality: str, range_header: s
                 return
         except requests.RequestException as error:
             safe_error = _YTDLPLogger._write_message(str(error)) or error.__class__.__name__
-            if retries >= _MAX_STREAM_READ_RETRIES or not range_supported:
+            if retries >= _MAX_STREAM_READ_RETRIES:
                 log(f"YouTube stream interrupted while reading song_id={song_id}: {safe_error}", "warning")
                 raise StreamUnavailableError(f"YouTube stream interrupted: {safe_error}") from error
 

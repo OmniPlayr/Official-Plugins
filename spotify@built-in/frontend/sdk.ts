@@ -17,6 +17,8 @@ declare global {
 
 export interface SpotifyTrack {
     id: string;
+    uri?: string;
+    linked_from?: { id?: string | null; uri?: string | null };
     name: string;
     artists: { name: string }[];
     album: {
@@ -32,6 +34,13 @@ export interface SpotifyState {
     duration: number;
     position: number;
     paused: boolean;
+}
+
+export function trackMatchesSong(track: SpotifyTrack | null | undefined, songId: string) {
+    if (!track) return false;
+    if (track.id === songId) return true;
+    if (track.linked_from?.id === songId) return true;
+    return track.linked_from?.uri === `spotify:track:${songId}` || track.uri === `spotify:track:${songId}`;
 }
 
 export interface SpotifyPlayer {
@@ -225,6 +234,23 @@ async function waitForActiveSpotifyDevice(token: string, targetDeviceId: string,
     return false;
 }
 
+async function waitForListedSpotifyDevice(token: string, targetDeviceId: string, timeoutMs = 6000) {
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < timeoutMs) {
+        const devices = await getSpotifyDevices(token);
+        if (devices.some(device => device.id === targetDeviceId)) return true;
+        await sleep(300);
+    }
+
+    return false;
+}
+
+async function isDeviceListed(token: string, targetDeviceId: string) {
+    const devices = await getSpotifyDevices(token);
+    return devices.some(device => device.id === targetDeviceId);
+}
+
 async function playTrackOnDevice(token: string, targetDeviceId: string, trackId: string) {
     const res = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(targetDeviceId)}`, {
         method: 'PUT',
@@ -261,18 +287,24 @@ async function putSpotifyCommand(
     if (res.ok || res.status === 204) return;
 
     if (res.status === 404) {
-        deviceId = null;
-        notifyState(null);
-        resetReady();
+        const stillListed = await isDeviceListed(token, targetDeviceId).catch(() => false);
 
-        if (options.reconnectOnMissingDevice) {
-            await sdkReconnectNow();
-            return putSpotifyCommand(path, errorLabel, { ...options, reconnectOnMissingDevice: false });
+        if (stillListed) {
+            if (options.ignoreMissingDevice) return;
+        } else {
+            deviceId = null;
+            notifyState(null);
+            resetReady();
+
+            if (options.reconnectOnMissingDevice) {
+                await sdkReconnectNow();
+                return putSpotifyCommand(path, errorLabel, { ...options, reconnectOnMissingDevice: false });
+            }
+
+            if (options.ignoreMissingDevice) return;
+
+            scheduleReconnect();
         }
-
-        if (options.ignoreMissingDevice) return;
-
-        scheduleReconnect();
     }
 
     const details = await readSpotifyError(res);
@@ -726,7 +758,22 @@ export async function sdkPlay(trackId: string) {
 
             try {
                 await player.activateElement();
-                await playTrackOnDevice(token, targetDeviceId, trackId);
+                await waitForListedSpotifyDevice(token, targetDeviceId);
+
+                let started = false;
+                let lastError: unknown = null;
+                for (let tries = 0; tries < 4 && !started; tries += 1) {
+                    try {
+                        await playTrackOnDevice(token, targetDeviceId, trackId);
+                        started = true;
+                    } catch (playError) {
+                        lastError = playError;
+                        const message = playError instanceof Error ? playError.message : String(playError);
+                        if (!message.includes(' 404')) throw playError;
+                        await sleep(500 * (tries + 1));
+                    }
+                }
+                if (!started) throw lastError;
 
                 if (!(await waitForActiveSpotifyDevice(token, targetDeviceId))) {
                     await playTrackOnDevice(token, targetDeviceId, trackId);

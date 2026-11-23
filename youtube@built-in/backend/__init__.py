@@ -1,7 +1,7 @@
 from . import routes
 
 from omniplayr.plugins import register, PluginBase, request_db_access
-from .streaming import StreamUnavailableError, get_stream, get_content_type, get_file_size
+from .streaming import StreamUnavailableError, get_stream, get_content_type, get_file_size, get_stream_metadata
 from .metadata import get_metadata
 
 def _is_youtube_song_id(song_id: str) -> bool:
@@ -30,6 +30,28 @@ class YoutubePlugin(PluginBase):
             raise FileNotFoundError(f"Invalid YouTube song ID: {song_id}")
 
         metadata = routes.get_metadata(account_id, song_id) if account_id else get_metadata(song_id)
+        if not metadata or not metadata.get("title"):
+            try:
+                extracted = get_stream_metadata(song_id)
+            except StreamUnavailableError as error:
+                if error.not_found:
+                    raise FileNotFoundError(str(error)) from error
+                raise RuntimeError(f"Unable to retrieve YouTube metadata for {song_id}: {error}") from error
+            if extracted and extracted.get("title"):
+                from .metadata import get_artwork
+
+                metadata = {
+                    "title": extracted.get("title"),
+                    "artist": extracted.get("artist"),
+                    "album": extracted.get("album"),
+                    "album_artist": extracted.get("album_artist"),
+                    "year": extracted.get("year"),
+                    "track": extracted.get("track"),
+                    "duration": extracted.get("duration"),
+                    "genre": None,
+                    "album_art": get_artwork(extracted.get("thumbnail")),
+                    "other": None,
+                }
         if not metadata or not metadata.get("title"):
             raise FileNotFoundError(f"YouTube video not found: {song_id}")
         return metadata

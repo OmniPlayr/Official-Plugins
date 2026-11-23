@@ -1,10 +1,22 @@
+
 from fastapi import Depends, HTTPException, Query, Request
 from pydantic import BaseModel
-from .artist import get_artist_info, set_db as set_artist_db
+
+from .artist import (
+    clean_optional,
+    get_artist_info,
+    set_db as set_artist_db,
+)
 from .album import get_album_info
 from .exists import check_artist_exists
 
-from omniplayr.plugins import api, verify_auth, get_token_user, get_admin_status, request_db_access
+from omniplayr.plugins import (
+    api,
+    verify_auth,
+    get_token_user,
+    get_admin_status,
+    request_db_access,
+)
 
 PLUGIN_KEY = "artists@built-in"
 _db = None
@@ -21,32 +33,64 @@ def _account_token(request: Request) -> str:
 
 def _account_id(request: Request) -> int:
     account_id = get_token_user(_account_token(request))
+
     if account_id is None:
-        raise HTTPException(status_code=401, detail="Invalid account token")
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid account token",
+        )
+
     return account_id
 
 
 def _require_genius_token(account_id: int) -> str:
     if _db is None:
-        raise HTTPException(status_code=500, detail="Artists token storage is not ready")
+        raise HTTPException(
+            status_code=500,
+            detail="Artists token storage is not ready",
+        )
 
-    row = _db.fetch_one("artists_accounts", where={"account_id": account_id})
+    row = _db.fetch_one(
+        "artists_accounts",
+        where={"account_id": account_id},
+    )
+
     token = row.get("genius_token") if row else None
+
     if not token:
-        raise HTTPException(status_code=401, detail="No Genius token configured")
+        raise HTTPException(
+            status_code=401,
+            detail="No Genius token configured",
+        )
+
     return token
 
 
 def _save_token_for_account(account_id: int, token: str) -> None:
-    existing = _db.fetch_one("artists_accounts", where={"account_id": account_id})
+    existing = _db.fetch_one(
+        "artists_accounts",
+        where={"account_id": account_id},
+    )
+
     if existing:
-        _db.update("artists_accounts", data={"genius_token": token}, where={"account_id": account_id})
+        _db.update(
+            "artists_accounts",
+            data={"genius_token": token},
+            where={"account_id": account_id},
+        )
     else:
-        _db.insert("artists_accounts", {"account_id": account_id, "genius_token": token})
+        _db.insert(
+            "artists_accounts",
+            {
+                "account_id": account_id,
+                "genius_token": token,
+            },
+        )
 
 
 def setup():
     global _db
+
     _db = request_db_access(
         PLUGIN_KEY,
         own={
@@ -57,46 +101,104 @@ def setup():
         },
         read=["accounts"],
     )
+
     set_artist_db(_db)
 
 
 @api.get("/artists/status")
 def status(request: Request, auth=Depends(verify_auth)):
     if not auth:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized",
+        )
+
     account_id = _account_id(request)
-    row = _db.fetch_one("artists_accounts", where={"account_id": account_id}) if _db else None
-    return {"token_set": bool(row and row.get("genius_token")), "is_admin": get_admin_status(account_id)}
+
+    row = (
+        _db.fetch_one(
+            "artists_accounts",
+            where={"account_id": account_id},
+        )
+        if _db
+        else None
+    )
+
+    return {
+        "token_set": bool(row and row.get("genius_token")),
+        "is_admin": get_admin_status(account_id),
+    }
 
 
 @api.post("/artists/setup")
-def setup_token(body: TokenRequest, request: Request, auth=Depends(verify_auth)):
+def setup_token(
+    body: TokenRequest,
+    request: Request,
+    auth=Depends(verify_auth),
+):
     if not auth:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized",
+        )
+
     token = body.token.strip()
+
     if not token:
-        raise HTTPException(status_code=400, detail="Token is required")
+        raise HTTPException(
+            status_code=400,
+            detail="Token is required",
+        )
+
     account_id = _account_id(request)
 
     if body.all_accounts:
         if not get_admin_status(account_id):
-            raise HTTPException(status_code=403, detail="Admin access required")
-        accounts = _db.fetch("accounts", columns=["id"])
+            raise HTTPException(
+                status_code=403,
+                detail="Admin access required",
+            )
+
+        accounts = _db.fetch(
+            "accounts",
+            columns=["id"],
+        )
+
         for account in accounts:
             _save_token_for_account(account["id"], token)
-        return {"ok": True, "applied_count": len(accounts)}
+
+        return {
+            "ok": True,
+            "applied_count": len(accounts),
+        }
 
     _save_token_for_account(account_id, token)
-    return {"ok": True, "applied_count": 1}
+
+    return {
+        "ok": True,
+        "applied_count": 1,
+    }
 
 
 @api.delete("/artists/disconnect")
-def disconnect(request: Request, auth=Depends(verify_auth)):
+def disconnect(
+    request: Request,
+    auth=Depends(verify_auth),
+):
     if not auth:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized",
+        )
+
     account_id = _account_id(request)
+
     if _db:
-        _db.delete("artists_accounts", where={"account_id": account_id})
+        _db.delete(
+            "artists_accounts",
+            where={"account_id": account_id},
+        )
+
     return {"ok": True}
 
 
@@ -107,12 +209,26 @@ def browse_music(
     no_cache: bool = Query(default=False),
     song: str | None = Query(default=None),
     album: str | None = Query(default=None),
-    auth=Depends(verify_auth)
+    auth=Depends(verify_auth),
 ):
     if not auth:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    genius_token = _require_genius_token(_account_id(request))
-    return get_artist_info(artist, song_name=song, album_name=album, no_cache=no_cache, genius_token=genius_token)
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized",
+        )
+
+    genius_token = _require_genius_token(
+        _account_id(request),
+    )
+
+    return get_artist_info(
+        artist,
+        song_name=clean_optional(song),
+        album_name=clean_optional(album),
+        no_cache=no_cache,
+        genius_token=genius_token,
+    )
+
 
 @api.get("/album/{album:path}")
 def browse_album(
@@ -125,9 +241,24 @@ def browse_album(
     auth=Depends(verify_auth),
 ):
     if not auth:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    genius_token = _require_genius_token(_account_id(request))
-    return get_album_info(album, artist_name=artist, song_name=song, release_type=type, no_cache=no_cache, genius_token=genius_token)
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized",
+        )
+
+    genius_token = _require_genius_token(
+        _account_id(request),
+    )
+
+    return get_album_info(
+        album,
+        artist_name=artist,
+        song_name=clean_optional(song),
+        release_type=clean_optional(type),
+        no_cache=no_cache,
+        genius_token=genius_token,
+    )
+
 
 @api.get("/artists/exists")
 def artist_exists(
@@ -138,5 +269,14 @@ def artist_exists(
     auth=Depends(verify_auth),
 ):
     if not auth:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    return check_artist_exists(artist, album_name=album, song_name=song, no_cache=no_cache)
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized",
+        )
+
+    return check_artist_exists(
+        artist,
+        album_name=clean_optional(album),
+        song_name=clean_optional(song),
+        no_cache=no_cache,
+    )

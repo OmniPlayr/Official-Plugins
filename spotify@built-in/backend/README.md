@@ -2,6 +2,8 @@
 
 Stream Spotify directly inside OmniPlayr. This plugin connects your Spotify account using OAuth and plays audio through the official Spotify Web Playback SDK. No file downloads, no transcoding, no third-party proxies.
 
+**Versions:** Backend `2.5.0` | Frontend `2.5.0`
+
 You can find this plugin at:
 **[https://omniplayr.wokki20.nl/packages/package/spotify@built-in](https://omniplayr.wokki20.nl/packages/package/spotify@built-in)**
 
@@ -23,6 +25,7 @@ Everything runs through Spotify's official APIs. A **Spotify Premium** account i
 
 ## Requirements
 
+- OmniPlayr development version `2026.7.6` or newer
 - A **Spotify Premium** account
 - A **Spotify Developer App** with a registered redirect URI (see [Setup](#setup) below)
 - OmniPlayr served over **HTTPS** in production (the Spotify Web Playback SDK requires a secure context; `localhost` over HTTP is allowed for development)

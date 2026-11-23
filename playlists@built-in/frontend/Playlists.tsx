@@ -1,6 +1,7 @@
 import { api, getAccount, navigate, player } from "@omniplayr/plugins";
 import { useParams } from "react-router-dom"
 import './styles/Playlists.css';
+import { markPlaylistPlayed } from './playlist-actions';
 import translations from "./translations";
 import { useEffect, useState } from "react";
 import liked from './assets/liked.svg';
@@ -205,16 +206,19 @@ function Playlists() {
             let playback: Promise<void> | null = null;
 
             const startFromSongs = (songs: PlaylistSong[]) => {
-                if (started || songs.length === 0) return;
-                started = true;
+                if (songs.length === 0) return;
 
-                const [firstSong, ...remainingSongs] = songs;
-                const firstItem = queueItem(firstSong, playlist);
+                if (!started) {
+                    started = true;
+                    void markPlaylistPlayed(playlist).catch(() => {});
+                    const firstItem = queueItem(songs[0], playlist);
+                    player.clearPriorityQueue();
+                    player.clearNextQueue();
+                    playback = player.playSong(firstItem.songId, firstItem.sourceType, firstItem.extra, true);
+                    setLoadingPlaylistKey(current => current === key ? null : current);
+                }
 
-                player.clearPriorityQueue();
-                player.clearNextQueue();
-                playback = player.playSong(firstItem.songId, firstItem.sourceType, firstItem.extra, true);
-                player.setNextQueue(playlistQueueName(playlist), remainingSongs.map(song => queueItem(song, playlist)));
+                player.setNextQueue(playlistQueueName(playlist), songs.slice(1).map(song => queueItem(song, playlist)));
             };
 
             const songs = await getPlaylistSongs(cache, playlist, startFromSongs);

@@ -2,11 +2,11 @@ import hashlib
 import time
 from omniplayr.plugins import log
 
-from .cache import read_detail, read_song_cache, write_song_cache
+from .cache import read_detail, read_song_cache, start_refresh, write_song_cache
 from .config import REMOTE_SERVICES, SERVICE_LABELS, config
 from .events import stream_event
 from .local import get_local_playlist_summaries, local_playlist_song_events, add_playlist_collaborators
-from .providers import get_page, refresh_detail, refresh_page, song_iterator, supports_song_streaming
+from .providers import get_page, refresh_detail, song_iterator, supports_song_streaming
 from .state import get_db
 
 
@@ -46,7 +46,7 @@ def _stream_service_playlists(service, user, user_id, include_private, limit, st
             if remaining <= 0:
                 break
             page_limit = min(request_page_size, remaining)
-            playlists, cached = get_page(service, user_id, page_limit, page_offset, user, refresh_cached=False)
+            playlists, cached = get_page(service, user_id, page_limit, page_offset, user, refresh_cached=True)
             if playlists is None:
                 yield stream_event("error", service=service, message=f"{label} page request failed")
                 break
@@ -54,14 +54,6 @@ def _stream_service_playlists(service, user, user_id, include_private, limit, st
             yield from emit(playlists, cached)
 
             page_for_pagination = playlists
-            if cached and state["emitted"] < limit:
-                fresh = refresh_page(service, user_id, page_limit, page_offset, user)
-                if fresh is None:
-                    yield stream_event("error", service=service, message=f"{label} refresh failed")
-                    break
-                yield from emit(fresh, False)
-                page_for_pagination = fresh
-
             if state["emitted"] >= limit or not load_all or len(page_for_pagination) < page_limit:
                 break
             page_offset += page_limit
@@ -123,10 +115,21 @@ def _local_playlist_events(raw_playlist_id, user_id, token_user_id):
     yield stream_event("done")
 
 
+def _refresh_song_cache(service, user_id, token_user_id, user, raw_playlist_id):
+    songs = []
+    for raw_song in song_iterator(service, raw_playlist_id, user_id, token_user_id, user):
+        if not isinstance(raw_song, dict):
+            continue
+        song = dict(raw_song)
+        song["metadata"] = dict(song.get("metadata") or {})
+        songs.append(song)
+    write_song_cache(user_id, service, raw_playlist_id, songs, complete=True)
+
+
 def _remote_song_events(service, user_id, token_user_id, user, raw_playlist_id):
     batch_size = max(1, int(config(f"{service}.song_display_batch_size", 20)))
     batch_delay = max(0, int(config(f"{service}.song_display_batch_delay_ms", 10))) / 1000
-    cached_song_data = read_song_cache(user_id, service, raw_playlist_id)
+    cached_song_data = read_song_cache(user_id, service, raw_playlist_id, allow_incomplete=True)
     cached_songs = cached_song_data.get("songs") if cached_song_data else None
     emitted_images: set[str] = set()
 
@@ -166,12 +169,28 @@ def _remote_song_events(service, user_id, token_user_id, user, raw_playlist_id):
                 event["images"] = event_images
             yield stream_event("song", **event)
             count += 1
-            if batch_delay and count % batch_size == 0:
+            if batch_delay and not cached and count % batch_size == 0:
                 time.sleep(batch_delay)
 
     if cached_songs is not None:
         yield from song_events(cached_songs, cached=True)
         yield stream_event("songs_done", service=service, count=len(cached_songs), cached=True)
+
+        if cached_song_data.get("complete"):
+            cached_at = float(cached_song_data.get("cached_at") or 0)
+            ttl = max(0, int(config("cache.song_ttl_seconds", 300)))
+            stale = ttl == 0 or time.time() - cached_at >= ttl
+            if stale and bool(config("cache.refresh_in_background", True)):
+                start_refresh(
+                    f"{service}-songs-{user_id}-{raw_playlist_id}",
+                    _refresh_song_cache,
+                    service,
+                    user_id,
+                    token_user_id,
+                    user,
+                    raw_playlist_id,
+                )
+            return
 
     fresh_songs = []
     live_songs = song_iterator(service, raw_playlist_id, user_id, token_user_id, user)
@@ -180,7 +199,7 @@ def _remote_song_events(service, user_id, token_user_id, user, raw_playlist_id):
     yield stream_event("songs_done", service=service, count=len(fresh_songs), cached=False)
 
 
-def stream_playlist_events(user, user_id, token_user_id, raw_playlist_id, service):
+def stream_playlist_events(user, user_id, token_user_id, raw_playlist_id, service, fast=False):
     yield stream_event("start", user={"id": user["id"], "name": user["name"]}, service=service)
 
     if service == "local":
@@ -196,14 +215,15 @@ def stream_playlist_events(user, user_id, token_user_id, raw_playlist_id, servic
         cached_playlist.pop("songs", None)
         yield stream_event("playlist", playlist=cached_playlist, cached=True)
 
-    fresh_playlist = refresh_detail(service, raw_playlist_id, user_id, user)
-    if fresh_playlist and not (fresh_playlist.get("private") and token_user_id != user_id):
-        fresh_playlist = dict(fresh_playlist)
-        fresh_playlist.pop("songs", None)
-        yield stream_event("playlist", playlist=fresh_playlist, cached=False)
-    elif not cached_playlist:
-        yield stream_event("error", service=service, message="Playlist not found")
-        return
+    if not fast:
+        fresh_playlist = refresh_detail(service, raw_playlist_id, user_id, user)
+        if fresh_playlist and not (fresh_playlist.get("private") and token_user_id != user_id):
+            fresh_playlist = dict(fresh_playlist)
+            fresh_playlist.pop("songs", None)
+            yield stream_event("playlist", playlist=fresh_playlist, cached=False)
+        elif not cached_playlist:
+            yield stream_event("error", service=service, message="Playlist not found")
+            return
 
     if not supports_song_streaming(service):
         yield stream_event("error", service=service, message=f"{service.title()} song streaming is unavailable")

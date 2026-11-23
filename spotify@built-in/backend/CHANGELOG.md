@@ -4,6 +4,12 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-11-23
+
+### Fixed
+
+- Frontend: Improved Spotify Web Playback SDK startup and recovery so stale or delayed player state can reconnect and retry instead of leaving playback startup stuck.
+
 ## [2.2.3] - 2026-07-15
 
 ### Fixed
@@ -45,6 +51,8 @@ All notable changes to `spotify@built-in` are documented here. This changelog fo
 - Frontend: Added transient volume support so pause fades can lower Spotify volume without overwriting the saved player volume.
 
 ## [2.1.0] - 2026-07-06
+
+### Changed
 
 - Backend: Switched imports to the new SDK.
 

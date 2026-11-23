@@ -4,6 +4,20 @@ All notable changes to `lyrics@built-in` are documented here. This changelog fol
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-22
+
+### Added
+
+- Added an InfoBar preview in the song information area.
+- Added the full lyrics page at `/lyrics`.
+- Added lyrics rendering for the desktop and mobile player layouts.
+
+### Changed
+
+- Replaced the legacy dashboard side-tab integration with OmniPlayr's shared InfoBar API.
+- Updated the player lyrics control to open and track the active lyrics InfoBar.
+- Improved the lyrics view with artwork-derived colors and responsive synced-lyric following.
+
 ## [1.0.3] - 2026-07-15
 
 ### Changed
@@ -17,7 +31,7 @@ All notable changes to `lyrics@built-in` are documented here. This changelog fol
 
 ### Fixed
 
-- Fixed the mobile layout for the lyrics, so it now shows under the fullscreen player.
+- Fixed the mobile lyrics layout so it appears below the fullscreen player.
 
 ## [1.0.0] - 2026-07-11
 
@@ -27,4 +41,4 @@ All notable changes to `lyrics@built-in` are documented here. This changelog fol
 - Added a resizable lyrics side tab and player toggle button.
 - Added synced and plain lyrics lookup through LRCLIB.
 - Added synced lyric highlighting, auto-follow scrolling, and lyric-line seeking.
-- Added browser-session lyrics caching and translated loading/not-found states.
+- Added browser-session lyrics caching and translated loading and not-found states.

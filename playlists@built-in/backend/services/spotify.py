@@ -96,7 +96,7 @@ def get_playlists(limit: int = 10, offset: int = 0, user_id: int = None, local_o
         user_id=user_id,
         limit=limit,
         offset=offset,
-        force_refresh=True,
+        force_refresh=False,
         timeout_seconds=int(config("requests.timeout_seconds", 10)),
     )
     if spotify_playlists is None:

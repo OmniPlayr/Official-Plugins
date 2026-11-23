@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from fastapi import Body, Depends, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from omniplayr.plugins import api, log, verify_auth
@@ -77,10 +78,14 @@ def get_cached_playlists(
     for service in REMOTE_SERVICES:
         if service not in requested_services:
             continue
-        cached = read_cached_page(resolved_user_id, service, limit, offset)
-        if cached is None:
+        cached = read_full_cache(resolved_user_id, service)
+        if cached is not None:
+            playlists.extend(_visible(cached[offset:offset + limit], include_private))
             continue
-        playlists.extend(_visible(cached, include_private))
+        page_size = min(50, max(limit, int(config(f"{service}.request_page_size", 50))))
+        cached = read_cached_page(resolved_user_id, service, page_size, offset)
+        if cached is not None:
+            playlists.extend(_visible(cached[:limit], include_private))
 
     return {
         "playlists": playlists,
@@ -104,14 +109,23 @@ def get_sidebar_playlists(
     if "local" in requested_services:
         playlists.extend(get_local_playlist_summaries(resolved_user_id, token_user_id, include_private))
 
-    for service in REMOTE_SERVICES:
-        if service in requested_services:
-            service_playlists, _ = get_full(service, resolved_user_id, user)
-            playlists.extend(_visible(service_playlists, include_private))
+    loading = False
+    services_to_load = [service for service in REMOTE_SERVICES if service in requested_services]
+    if services_to_load:
+        with ThreadPoolExecutor(max_workers=len(services_to_load)) as executor:
+            requests = {
+                service: executor.submit(get_full, service, resolved_user_id, user)
+                for service in services_to_load
+            }
+            for service in services_to_load:
+                service_playlists, _cached, service_loading = requests[service].result()
+                playlists.extend(_visible(service_playlists, include_private))
+                loading = loading or service_loading
 
     return {
         "playlists": playlists,
         "frequent": get_frequent_playlists(resolved_user_id),
+        "loading": loading,
     }
 
 
@@ -136,8 +150,10 @@ def get_cached_sidebar_playlists(
             continue
         cached = read_full_cache(resolved_user_id, service)
         if cached is None:
-            continue
-        playlists.extend(_visible(cached, include_private))
+            page_size = min(50, max(1, int(config(f"{service}.request_page_size", 50))))
+            cached = read_cached_page(resolved_user_id, service, page_size, 0)
+        if cached is not None:
+            playlists.extend(_visible(cached, include_private))
 
     return {
         "playlists": playlists,
@@ -193,6 +209,7 @@ def stream_playlists(
 def stream_playlist(
     user_id: str,
     playlist_id: str,
+    fast: bool = Query(False),
     auth=Depends(verify_auth),
     x_account_token: str = Header(..., alias="X-Account-Token"),
 ):
@@ -201,7 +218,7 @@ def stream_playlist(
     raw_playlist_id, service = split_playlist_id(playlist_id)
 
     return StreamingResponse(
-        stream_playlist_events(user, resolved_user_id, token_user_id, raw_playlist_id, service),
+        stream_playlist_events(user, resolved_user_id, token_user_id, raw_playlist_id, service, fast=fast),
         media_type="application/x-ndjson",
         headers=STREAM_HEADERS,
     )
@@ -301,7 +318,6 @@ def get_playlist(
         playlist = get_detail(service, raw_playlist_id, resolved_user_id)
         if not playlist or (playlist.get("private") and token_user_id != resolved_user_id):
             raise HTTPException(status_code=404, detail="Playlist not found")
-        add_frequent_playlist(raw_playlist_id, service, token_user_id)
         return playlist
 
     try:
@@ -317,8 +333,21 @@ def get_playlist(
 
     playlist["service"] = "local"
     add_playlist_collaborators(playlist)
-    add_frequent_playlist(str(local_playlist_id), "local", token_user_id)
     return playlist
+
+@api.post("/playlists/{user_id}/{playlist_id}/played")
+def mark_playlist_played(
+    user_id: str,
+    playlist_id: str,
+    auth=Depends(verify_auth),
+    x_account_token: str = Header(..., alias="X-Account-Token"),
+):
+    token_user_id = require_user(auth, x_account_token)
+    resolve_user_id(user_id, token_user_id)
+    raw_playlist_id, service = split_playlist_id(playlist_id)
+    add_frequent_playlist(raw_playlist_id, service, token_user_id)
+    return {"success": True}
+
 
 @api.post("/playlists/{user_id}/create")
 def create_playlist(
