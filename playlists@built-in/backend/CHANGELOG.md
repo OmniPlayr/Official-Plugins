@@ -4,7 +4,7 @@ All notable changes to `playlists@built-in` are documented here. This changelog 
 
 ## [Unreleased]
 
-## [beta-1.5.0] - 2026-11-23
+## [beta-1.5.1] - 2026-11-23
 
 ### Added
 
