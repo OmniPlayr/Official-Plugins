@@ -4,6 +4,16 @@ All notable changes to `youtube@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-11-23
+
+### Fixed
+
+- Updated yt-dlp to the current stable release line so YouTube extractor changes are picked up.
+- Added extractor and connection retries, automatic byte-range resume after interrupted reads, and longer stream read timeouts.
+- Logged yt-dlp warnings and stream failures instead of silently discarding extraction diagnostics.
+- Reduced transient stream-error caching and stopped classifying temporary upstream failures as missing videos.
+- Removed the extra upstream size probe when yt-dlp does not provide an exact size, avoiding unnecessary playback startup delays.
+
 ## [1.0.4] - 2026-07-15
 
 ### Fixed

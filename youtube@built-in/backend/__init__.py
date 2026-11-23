@@ -15,7 +15,9 @@ class YoutubePlugin(PluginBase):
         try:
             return get_stream(song_id, range_header=range_header)
         except StreamUnavailableError as error:
-            raise FileNotFoundError(str(error)) from error
+            if error.not_found:
+                raise FileNotFoundError(str(error)) from error
+            raise RuntimeError(str(error)) from error
 
     def get_content_type(self, song_id: str, account_id: int = None) -> str:
         return get_content_type(song_id)

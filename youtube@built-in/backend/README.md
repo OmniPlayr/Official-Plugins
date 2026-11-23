@@ -69,7 +69,7 @@ OAuth tokens are stored in the database and mirrored to `account-{id}.oauth.json
 | Package | Version |
 |---------|---------|
 | `ytmusicapi` | `==1.12.1` |
-| `yt_dlp` | `==2026.6.9` |
+| `yt_dlp` | `>=2026.10.26` |
 | `starlette` | `==0.37.2` |
 | `requests` | `>=2.28` |
 
