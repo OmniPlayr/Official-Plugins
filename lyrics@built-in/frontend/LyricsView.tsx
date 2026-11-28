@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import './styles/LyricsView.css';
-import { player, currentInfobar, toggleInfoBar, navigate } from '@omniplayr/plugins';
+import { player, currentInfobar, toggleInfoBar, navigate, useIsMobile } from '@omniplayr/plugins';
 import getLyrics from './lyrics';
 import { AudioLines, LoaderCircle, Maximize2, Music } from 'lucide-react';
 import translations from './translations';
@@ -445,7 +445,8 @@ function Lyrics({
     );
 }
 
-function LyricsView() {
+function LyricsView({ fullInfoBar = false }: { fullInfoBar?: boolean }) {
+    const isMobile = useIsMobile();
     const { t } = translations.useTranslation();
     const [lyricsState, setLyricsState] = useState<LyricsLoadState>({ status: 'idle', lyrics: null });
     const [averageColor, setAverageColor] = useState<AverageColor | null>(null);
@@ -605,12 +606,14 @@ function LyricsView() {
             className='lyrics-container'
             style={containerStyle}
         >
-            <div className="lyrics-container-header">
-                <button className="maximize-lyrics" onClick={maximizeLyrics}>
-                    <Maximize2/>
-                </button>
-            </div>
-            {hasSyncedLyrics && !isFollowingLyrics && (
+            {!isMobile && (
+                <div className="lyrics-container-header">
+                    <button className="maximize-lyrics" onClick={maximizeLyrics}>
+                        <Maximize2/>
+                    </button>
+                </div>
+            )}
+            {!isMobile && hasSyncedLyrics && !isFollowingLyrics && (
                 <button
                     className='lyrics-sync-button'
                     type='button'
@@ -635,12 +638,14 @@ function LyricsView() {
                         syncRequest={syncRequest}
                         onFollowingChange={setIsFollowingLyrics}
                     />
-                    <p className='lyrics-provider'>
-                        {t('lyrics.provider.prefix')}{' '}
-                        <a href='https://lrclib.net/' target='_blank' rel='noreferrer'>
-                            {t('lyrics.provider.name')}
-                        </a>
-                    </p>
+                    {(!isMobile || !fullInfoBar) && (
+                        <p className='lyrics-provider'>
+                            {t('lyrics.provider.prefix')}{' '}
+                            <a href='https://lrclib.net/' target='_blank' rel='noreferrer'>
+                                {t('lyrics.provider.name')}
+                            </a>
+                        </p>
+                    )}
                 </>
             ) : (
                 <div className='lyrics-placeholder'>

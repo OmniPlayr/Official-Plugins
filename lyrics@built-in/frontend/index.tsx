@@ -1,7 +1,7 @@
-import { modify, useIsMobile, registerInfobar, registerRoute } from "@omniplayr/plugins";
+import { currentInfobar, modify, registerInfobar, registerPlayerAction, registerRoute, toggleInfoBar } from "@omniplayr/plugins";
 import { createRoot, type Root } from "react-dom/client";
 import LyricsView from "./LyricsView";
-import LyricsButton from "./LyricsButton";
+import { MicVocal } from "lucide-react";
 import translations from './translations';
 import InfobarPreview from "./InfobarPreview";
 import LyricsFull from "./LyricsFull";
@@ -9,28 +9,9 @@ import LyricsFull from "./LyricsFull";
 const plugin_key = "lyrics@built-in";
 
 const roots = new WeakMap<Element, Root>();
-let desktopLyricsRoot: Root | null = null;
-let mobileLyricsRoot: Root | null = null;
-let resizeFrame: number | null = null;
 type RootContainer = Element & {
     __omniplayrReactRoot?: Root;
 };
-
-function DesktopLyricsView() {
-    const isMobile = useIsMobile();
-
-    if (isMobile) return null;
-
-    return <LyricsView />;
-}
-
-function MobileLyricsView() {
-    const isMobile = useIsMobile();
-
-    if (!isMobile) return null;
-
-    return <LyricsView />;
-}
 
 function getRoot(container: Element) {
     const rootContainer = container as RootContainer;
@@ -49,96 +30,6 @@ function getRoot(container: Element) {
     return root;
 }
 
-function getSideTabButtonSlot(el: Element, className: string, order: number) {
-    let group = el.querySelector(
-        ":scope > .__plugin-hook-wrapper.sidetab-button-plugin-root"
-    );
-
-    if (!group) {
-        group = document.createElement("div");
-        group.className = "__plugin-hook-wrapper sidetab-button-plugin-root";
-        el.appendChild(group);
-    }
-
-    let container = group.querySelector(`:scope > .${className}`);
-
-    if (!container) {
-        container = document.createElement("div");
-        container.className = `sidetab-button-slot ${className}`;
-        group.appendChild(container);
-    }
-
-    (container as HTMLElement).style.order = String(order);
-    return container;
-}
-
-function mountMobileLyrics() {
-    const el = document.querySelector('[data-component="Player-Fullscreen"], .Player-Fullscreen');
-
-    if (!el) return false;
-
-    let container = el.querySelector(
-        ":scope > .__plugin-hook-wrapper.lyrics-mobile-plugin-root"
-    );
-
-    if (!container) {
-        container = document.createElement("div");
-        container.className = "__plugin-hook-wrapper lyrics-mobile-plugin-root";
-        el.appendChild(container);
-    }
-
-    mobileLyricsRoot = getRoot(container) ?? null;
-    mobileLyricsRoot?.render(<MobileLyricsView />);
-
-    return true;
-}
-
-modify(plugin_key, 'Player.Player-Fullscreen', el => {
-    let container = el.querySelector(
-        ":scope > .__plugin-hook-wrapper.lyrics-mobile-plugin-root"
-    );
-
-    if (!container) {
-        container = document.createElement("div");
-        container.className = "__plugin-hook-wrapper lyrics-mobile-plugin-root";
-        el.appendChild(container);
-    }
-
-    mobileLyricsRoot = getRoot(container) ?? null;
-    mobileLyricsRoot?.render(<MobileLyricsView />);
-});
-
-if (!mountMobileLyrics()) {
-    const observer = new MutationObserver(() => {
-        if (mountMobileLyrics()) {
-            observer.disconnect();
-        }
-    });
-
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-    });
-}
-
-function rerenderLyricsViews() {
-    if (resizeFrame !== null) {
-        cancelAnimationFrame(resizeFrame);
-    }
-
-    resizeFrame = requestAnimationFrame(() => {
-        desktopLyricsRoot?.render(<DesktopLyricsView />);
-
-        if (!mobileLyricsRoot) {
-            mountMobileLyrics();
-        } else {
-            mobileLyricsRoot.render(<MobileLyricsView />);
-        }
-
-        resizeFrame = null;
-    });
-}
-
 modify(plugin_key, 'Infobar.ib-song-more-info', (el, mount) => {
     if (!mount) return;
 
@@ -153,19 +44,15 @@ registerRoute({
     component: LyricsFull,
 });
 
-registerInfobar(plugin_key, { barId: 'lyrics', view: DesktopLyricsView })
+registerInfobar(plugin_key, { barId: 'lyrics', view: () => <LyricsView fullInfoBar />, mobile: 'full' });
 
-window.addEventListener("resize", rerenderLyricsViews);
-
-modify(plugin_key, 'Player.plugin-target-before-volume-option', el => {
-    el.setAttribute("data-plugin-hooked", "");
-
-    const container = getSideTabButtonSlot(el, "lyrics-button-plugin-root", 1);
-    const root = getRoot(container);
-
-    if (root) {
-        root.render(<LyricsButton />);
-    }
+registerPlayerAction(plugin_key, {
+    id: 'lyrics',
+    icon: MicVocal,
+    label: () => translations.t('lyrics.action'),
+    showInPlayer: true,
+    active: () => currentInfobar()?.id === plugin_key,
+    action: () => toggleInfoBar(plugin_key, 'lyrics'),
 });
 
 export default translations;

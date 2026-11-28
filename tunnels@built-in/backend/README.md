@@ -2,7 +2,7 @@
 
 Publish your OmniPlayr server through a secure public tunnel. This backend plugin supports ngrok and Cloudflare Tunnel, manages their setup and lifecycle, and places a reverse proxy in front of the OmniPlayr frontend and backend.
 
-**Versions:** Backend `2.1.0` | Frontend `2.0.0`
+**Versions:** Backend `2.1.1` | Frontend `2.0.0`
 
 You can find this plugin at:
 **[https://omniplayr.wokki20.nl/packages/package/tunnels@built-in](https://omniplayr.wokki20.nl/packages/package/tunnels@built-in)**
@@ -44,6 +44,8 @@ Only one provider is required. You can configure both providers if you want to s
 ---
 
 ## Setup
+
+A running tunnel exposes your server to the internet. Keep authentication enabled and keep provider credentials out of Git.
 
 ### ngrok
 
@@ -171,14 +173,6 @@ Starts a configured tunnel and returns its current state and public URL.
 Stops a running tunnel and returns its updated state.
 
 Valid tunnel names are `ngrok` and `cloudflare`.
-
----
-
-## Security
-
-Starting a tunnel makes your OmniPlayr instance reachable from the internet. Keep authentication enabled, protect administrator credentials, and only share the public URL with people who should have access.
-
-Provider credentials and generated tunnel settings are stored in the plugin directory. Do not commit `.env`, `.cloudflared`, or generated provider settings containing private credentials.
 
 ---
 

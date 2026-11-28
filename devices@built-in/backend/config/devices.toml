@@ -1,0 +1,3 @@
+[devices]
+heartbeat_interval = 20
+refresh_interval = 5

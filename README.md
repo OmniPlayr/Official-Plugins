@@ -76,7 +76,7 @@ Requires a Google Cloud OAuth client configured for TVs and limited-input device
 ### [`playlists@built-in`](./playlists@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)  
-**Version:** Backend beta-1.5.0 / Frontend beta-1.5.0
+**Version:** Backend beta-1.5.2 / Frontend beta-1.5.2
 
 Create, browse, and stream playlists inside OmniPlayr. The plugin manages local OmniPlayr playlists, automatically creates a private Liked Songs playlist for each user, and includes collaborator metadata for local playlists.
 
@@ -89,9 +89,9 @@ When `spotify@built-in`, `soundcloud@built-in`, or `youtube@built-in` is install
 ### [`lyrics@built-in`](./lyrics@built-in/frontend/)
 
 **Type:** Frontend  
-**Version:** 1.2.0
+**Version:** 1.3.1
 
-View synced or plain lyrics for the currently playing song through an OmniPlayr InfoBar. The plugin adds a lyrics control to the player, shows a compact preview in the song information area, and provides a full lyrics page. It fetches lyrics from [LRCLIB](https://lrclib.net/), follows synced lines during playback, and lets users seek by selecting a line.
+View synced or plain lyrics for the currently playing song through an OmniPlayr InfoBar. The plugin adds Lyrics to Track actions and the desktop player, shows a compact preview in the song information area, and provides a full lyrics page. It fetches lyrics from [LRCLIB](https://lrclib.net/), follows synced lines during playback, and lets users seek by selecting a line.
 
 It works with any source that exposes enough track metadata for lookup and adapts its layout for desktop and mobile playback.
 
@@ -102,9 +102,9 @@ It works with any source that exposes enough track metadata for lookup and adapt
 ### [`queued@built-in`](./queued@built-in/frontend/)
 
 **Type:** Frontend  
-**Version:** 1.1.0
+**Version:** 1.6.1
 
-View and manage the OmniPlayr queue through an InfoBar. The plugin shows the current song, manually queued songs, and next-up songs, supports playing visible queue items, drag-and-drop reordering, incremental loading, and a mobile popup entry point.
+View and manage the OmniPlayr queue through an InfoBar. The plugin shows the current song, manually queued songs, and next-up songs, supports playing visible queue items, drag-and-drop reordering, incremental loading, and a Queue action in the player menu.
 
 Queue entries can carry song metadata and album artwork. When `playlists@built-in` is installed, playlist-backed queues can also display playlist names and richer track information.
 
@@ -115,11 +115,11 @@ Queue entries can carry song metadata and album artwork. When `playlists@built-i
 ### [`devices@built-in`](./devices@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)
-**Version:** Backend 1.0.0 / Frontend 1.0.0
+**Version:** Backend 1.0.0 / Frontend 1.2.0
 
 View the OmniPlayr devices on your account, see which one is current, and switch playback between them. The plugin keeps browser tabs, desktop clients, phones, and reliable non-browser clients separated correctly, disconnects devices on page close or refresh, and supports remote playback commands including volume.
 
-Google Cast devices are discovered locally in the frontend and are not sent to the server. Streamable sources can play through Cast output, while Spotify can transfer between OmniPlayr clients but cannot be cast from the browser SDK.
+Open the device InfoBar from Track actions or the desktop player. On mobile it opens as a partial sheet. Google Cast devices are discovered locally in the frontend and are not sent to the server. Streamable sources can play through Cast output, while Spotify can transfer between OmniPlayr clients but cannot be cast from the browser SDK.
 
 [Read more](./devices@built-in/backend/README.md)
 
@@ -128,9 +128,9 @@ Google Cast devices are discovered locally in the frontend and are not sent to t
 ### [`artists@built-in`](./artists@built-in/)
 
 **Type:** Full-stack (Backend + Frontend)
-**Version:** Backend 2.1.3 / Frontend 2.1.2
+**Version:** Backend 2.1.4 / Frontend 2.2.0
 
-Adds artist and album profile pages to OmniPlayr. Click on any artist or album name in the player and get a full profile: biography, genres, discography, tracklists, cover art, and more.
+Adds artist and album profile pages to OmniPlayr. Click an artist or album name in the player, or open it from Track actions, to see a full profile: biography, genres, discography, tracklists, cover art, and more.
 
 Data is pulled from [MusicBrainz](https://musicbrainz.org), [Genius](https://genius.com), and the [Cover Art Archive](https://coverartarchive.org). Profiles are cached locally after the first load for instant repeat visits.
 
@@ -142,7 +142,7 @@ Data is pulled from [MusicBrainz](https://musicbrainz.org), [Genius](https://gen
 
 **Type:** Full-stack (Backend + Frontend)
 
-**Version:** Backend 2.1.0 / Frontend 2.0.0
+**Version:** Backend 2.1.1 / Frontend 2.0.0
 
 Give an OmniPlayr server a secure public HTTPS address and manage it from the admin UI. The plugin supports both [ngrok](https://ngrok.com) and [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/), including setup, start/stop controls, status and public URL reporting, and optional automatic startup.
 

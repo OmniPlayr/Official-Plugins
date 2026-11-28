@@ -1,0 +1,5 @@
+[devices]
+heartbeat_interval = 15
+refresh_interval = 20
+google_cast_enabled = true
+google_cast_receiver_app_id = "CC1AD845"

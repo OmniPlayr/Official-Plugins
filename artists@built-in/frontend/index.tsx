@@ -3,22 +3,21 @@ import { artistCache } from './artistCache';
 import './main.css';
 import AlbumPage from './AlbumPage';
 import { albumCache } from './albumCache';
-import { KeyRound } from 'lucide-react';
+import { Disc3, KeyRound, UserRound } from 'lucide-react';
 import ArtistsTokenSetup from './ArtistsTokenSetup';
 import { getStatus } from './auth';
 import translations, { PLUGIN_ID } from './translations';
 
 import {
     modify,
+    player,
+    registerPlayerAction,
     api,
     navigate,
     createPopup,
     registerPluginsMenuItem,
     registerRoute
 } from '@omniplayr/plugins';
-
-const isMobile = window.innerWidth < 768
-const selector = isMobile ? 'Player-Fullscreen.player-fullscreen-artist' : 'Player.player-track-artist'
 
 function isTokenValid(): boolean {
     const access_expiry = localStorage.getItem('access_token_expires');
@@ -76,10 +75,10 @@ registerRoute({ path: '/artist/:artist/:album', component: () =>
 });
 
 function getCurrentSong(): string | undefined {
-    return document.querySelector('.player-track-title')?.textContent?.trim() || undefined;
+    return player.currentMetadata?.title || player.currentMetadata?.filename || undefined;
 }
 
-modify(PLUGIN_ID, selector, async el => {
+function linkCredits(el: Element) {
     const text = el.textContent || ''
     const [artist, album] = text.split(' · ')
     const artists = artist?.split(' & ').filter(Boolean) || []
@@ -148,4 +147,34 @@ modify(PLUGIN_ID, selector, async el => {
         })
         el.appendChild(albumSpan)
     }
-})
+}
+
+modify(PLUGIN_ID, 'Player.player-track-artist', linkCredits);
+modify(PLUGIN_ID, 'Infobar.ib-song-artist', linkCredits);
+
+registerPlayerAction(PLUGIN_ID, {
+    id: 'artist',
+    icon: UserRound,
+    label: () => translations.t('track.open_artist'),
+    visible: ({ metadata }) => Boolean(metadata?.artist?.trim()),
+    action: ({ metadata }) => {
+        const artist = metadata?.artist?.split(' & ')[0]?.trim();
+        if (!artist) return;
+        sessionStorage.setItem('artist-nav-context', JSON.stringify({ song: getCurrentSong(), album: metadata?.album }));
+        navigate(`/artist/${encodeURIComponent(artist)}`);
+    },
+});
+
+registerPlayerAction(PLUGIN_ID, {
+    id: 'album',
+    icon: Disc3,
+    label: () => translations.t('track.open_album'),
+    visible: ({ metadata }) => Boolean(metadata?.artist?.trim() && metadata?.album?.trim()),
+    action: ({ metadata }) => {
+        const artist = metadata?.artist?.trim();
+        const album = metadata?.album?.trim();
+        if (!artist || !album) return;
+        sessionStorage.setItem('artist-nav-context', JSON.stringify({ song: getCurrentSong(), album }));
+        navigate(`/artist/${encodeURIComponent(artist)}/${encodeURIComponent(album)}`);
+    },
+});

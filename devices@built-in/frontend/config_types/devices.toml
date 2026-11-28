@@ -1,0 +1,5 @@
+[devices]
+heartbeat_interval = "int"
+refresh_interval = "int"
+google_cast_enabled = "bool"
+google_cast_receiver_app_id = "str"

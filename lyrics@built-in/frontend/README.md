@@ -2,7 +2,7 @@
 
 View synced or plain lyrics for the currently playing OmniPlayr song. This frontend plugin adds a lyrics InfoBar, a compact preview in the song information area, and a full lyrics page.
 
-**Version:** Frontend `1.2.0`
+**Version:** Frontend `1.3.1`
 
 You can find this plugin at:
 **[https://omniplayr.wokki20.nl/packages/package/lyrics@built-in](https://omniplayr.wokki20.nl/packages/package/lyrics@built-in)**
@@ -13,11 +13,11 @@ You can find this plugin at:
 
 When a track is playing, `lyrics@built-in` will:
 
-- Add a lyrics button beside the player controls
+- Add Lyrics to Track actions and the desktop player, including while the player is idle
 - Open lyrics in the shared OmniPlayr InfoBar
 - Show a compact preview in the song information area
-- Open the full lyrics view at `/lyrics`
-- Adapt the lyrics layout to desktop and mobile player views
+- Open the full lyrics view at `/lyrics` on desktop
+- Open a full-height lyrics InfoBar on mobile with a down-arrow dismiss control
 - Fetch synced lyrics first when enough track metadata is available
 - Fall back to search-based lyrics lookup when album or artist metadata is missing
 - Display plain lyrics when synced lyrics are not available
@@ -31,7 +31,7 @@ Lyrics are provided by [LRCLIB](https://lrclib.net/).
 
 ## Requirements
 
-- OmniPlayr frontend plugin support with the InfoBar API (development version `2026.11.2` or newer)
+- OmniPlayr frontend plugin support with the InfoBar and player action APIs (development version `2026.11.10` or newer)
 - Track metadata with at least a title
 - Browser access to `https://lrclib.net/`
 
@@ -64,7 +64,7 @@ If no lyrics are found, the InfoBar shows a translated not-found message.
 
 | Hook or API | Purpose |
 |-------------|---------|
-| `Player.plugin-target-before-volume-option` | Adds the lyrics toggle button |
+| `registerPlayerAction` | Adds Lyrics to Track actions and the desktop player |
 | `Infobar.ib-song-more-info` | Renders the compact lyrics preview in the song information area |
 | `registerInfobar` | Registers the lyrics InfoBar view |
 | `registerRoute` with `/lyrics` | Registers the full lyrics page |

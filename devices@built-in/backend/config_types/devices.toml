@@ -1,0 +1,3 @@
+[devices]
+heartbeat_interval = "int"
+refresh_interval = "int"

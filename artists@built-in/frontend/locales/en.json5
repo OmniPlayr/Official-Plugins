@@ -1,4 +1,6 @@
 {
+    "track.open_artist": "Go to artist",
+    "track.open_album": "Go to album",
     "token.menu.set": "Set Genius token",
     "token.menu.edit": "Edit Genius token",
     "token.popup.title.set": "Set Genius token",

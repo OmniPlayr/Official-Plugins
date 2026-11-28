@@ -4,6 +4,18 @@ All notable changes to `queued@built-in` are documented here. This changelog fol
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-11-28
+
+### Changed
+
+- Opened Queue in a partial mobile InfoBar and kept the desktop shortcut available while idle.
+
+## [1.6.0] - 2026-11-28
+
+### Changed
+
+- Moved Queue to Track actions. The desktop shortcut appears during playback.
+
 ## [1.1.0] - 2026-11-22
 
 ### Added

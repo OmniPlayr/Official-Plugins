@@ -1,4 +1,6 @@
 {
+    "track.open_artist": "Ga naar artiest",
+    "track.open_album": "Ga naar album",
     "token.menu.set": "Genius-token instellen",
     "token.menu.edit": "Genius-token bewerken",
     "token.popup.title.set": "Genius-token instellen",

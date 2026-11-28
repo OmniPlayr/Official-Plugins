@@ -2,7 +2,7 @@
 
 Create, list, and stream playlist data inside OmniPlayr. This plugin manages local OmniPlayr playlists and can also surface Spotify, SoundCloud, and YouTube Music playlists when their source plugins are installed and connected.
 
-**Versions:** Backend `beta-1.5.0` | Frontend `beta-1.5.0`
+**Versions:** Backend `beta-1.5.2` | Frontend `beta-1.5.2`
 
 You can find this plugin at:
 **[https://omniplayr.wokki20.nl/packages/package/playlists@built-in](https://omniplayr.wokki20.nl/packages/package/playlists@built-in)**

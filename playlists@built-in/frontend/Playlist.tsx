@@ -171,6 +171,9 @@ function queueItem(song: PlaylistSong, playlist: Playlist): PlaylistQueueItem {
         metadata: {
             ...song.metadata,
             album_art: albumArt,
+            genre: null,
+            year: song.metadata.year == null ? null : String(song.metadata.year),
+            filename: null,
         },
     };
 }

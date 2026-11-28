@@ -1,0 +1,32 @@
+{
+    "devices.title": "Devices",
+    "devices.loading": "Loading devices",
+    "devices.empty": "No devices found",
+    "devices.close": "Close",
+    "devices.unknown": "Unknown device",
+    "devices.current.computer": "This computer",
+    "devices.current.phone": "This phone",
+    "devices.current.tablet": "This tablet",
+    "devices.current.device": "This device",
+
+    "devices.browser": "Browser",
+    "devices.desktop": "Desktop",
+    "devices.android": "Android device",
+    "devices.browser_on_device": "{browser} on {device}",
+    "devices.browser_on_os": "{browser} on {operatingSystem}",
+
+    "devices.status.online": "Online",
+    "devices.status.idle": "Idle",
+    "devices.status.unconnectable": "Unavailable",
+    "devices.status.playing": "Playing",
+    "devices.playing_on": "Playing on",
+
+    "devices.cast.google": "Google Cast",
+    "devices.cast.airplay": "AirPlay",
+    "devices.cast.fire_tv": "Amazon Fire TV",
+    "devices.cast.dial": "DIAL",
+    "devices.cast.dlna": "DLNA",
+    "devices.cast.sonos": "Sonos",
+
+    "devices.select_cast_device": "Select a cast device"
+}

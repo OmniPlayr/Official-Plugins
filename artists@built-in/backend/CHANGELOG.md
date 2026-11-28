@@ -4,6 +4,18 @@ All notable changes to `artists@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-11-28
+
+### Changed
+
+- Frontend: Added Go to artist and Go to album to Track actions, and kept artist and album links in the InfoBar.
+
+## [2.1.4] - 2026-11-28
+
+### Changed
+
+- Backend package: Updated the shared README and changelog for the frontend Track actions release.
+
 ## [2.1.3] - 2026-11-23
 
 ### Changed

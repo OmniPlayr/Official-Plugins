@@ -4,6 +4,18 @@ All notable changes to `lyrics@built-in` are documented here. This changelog fol
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-11-28
+
+### Changed
+
+- Restored the microphone icon, kept the shortcut available while idle, and opened the mobile InfoBar as a full-height lyrics view.
+
+## [1.3.0] - 2026-11-28
+
+### Changed
+
+- Moved the lyrics control to Track actions and kept the desktop player shortcut.
+
 ## [1.2.0] - 2026-11-22
 
 ### Added

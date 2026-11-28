@@ -179,7 +179,7 @@ function getCache(accountToken: string | null = getAccount()) {
     return cache;
 }
 
-export function account(cache: HomeCache) {
+export function account(cache: Pick<HomeCache, 'account' | 'accountRequest'>) {
     if (cache.account) return Promise.resolve(cache.account);
     if (cache.accountRequest) return cache.accountRequest;
 
@@ -226,13 +226,17 @@ export function queueItem(song: PlaylistSong, playlist: Playlist): PlaylistQueue
             playlistPosition: song.position,
         },
         metadata: {
+            duration: null,
+            genre: null,
+            year: null,
+            filename: null,
             ...song.metadata,
             album_art: albumArt,
         },
     };
 }
 
-export async function getPlaylistSongs(cache: HomeCache, playlist: Playlist, onUpdate?: (songs: PlaylistSong[]) => void) {
+export async function getPlaylistSongs(cache: Pick<HomeCache, 'songs' | 'songRequests'>, playlist: Playlist, onUpdate?: (songs: PlaylistSong[]) => void) {
     const key = playlistKey(playlist);
     if (cache.songRequests?.has(key)) return cache.songRequests.get(key)!;
     if (cache.songs?.has(key)) return cache.songs.get(key)!;

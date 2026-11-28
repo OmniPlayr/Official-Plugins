@@ -2,7 +2,7 @@
 
 View and manage the OmniPlayr queue through a dedicated InfoBar. This frontend plugin shows the current song, manually queued songs, and upcoming songs, with drag-and-drop reordering for supported queue sections.
 
-**Version:** Frontend `1.1.0`
+**Version:** Frontend `1.6.1`
 
 You can find this plugin at:
 **[https://omniplayr.wokki20.nl/packages/package/queued@built-in](https://omniplayr.wokki20.nl/packages/package/queued@built-in)**
@@ -13,8 +13,8 @@ You can find this plugin at:
 
 `queued@built-in` adds queue controls directly to the player:
 
-- Add a queue button beside the player controls
-- Open the queue in the shared OmniPlayr InfoBar
+- Add Queue to Track actions and the desktop player, including while idle
+- Open the queue in the shared InfoBar, presented as a partial sheet on mobile
 - Show the currently playing song, priority queue, and next-up queue
 - Show a next-track preview in the song information area
 - Play any visible queue item immediately
@@ -30,7 +30,7 @@ The plugin is frontend-only. It uses OmniPlayr's player APIs and does not add ba
 
 ## Requirements
 
-- OmniPlayr development version `2026.11.2` or newer, with the InfoBar API
+- OmniPlayr development version `2026.11.10` or newer, with the InfoBar and player action APIs
 
 ---
 

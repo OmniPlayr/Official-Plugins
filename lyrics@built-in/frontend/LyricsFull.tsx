@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import './styles/LyricsView.css';
 import './styles/LyricsFull.css';
-import { player, type TrackMetadata, currentInfobar, toggleInfoBar, navigate } from '@omniplayr/plugins';
+import { player, type TrackMetadata, currentInfobar, toggleInfoBar, navigate, useIsMobile } from '@omniplayr/plugins';
 import getLyrics from './lyrics';
 import { AudioLines, Expand, Fullscreen, LoaderCircle, Minimize2, Music, Shrink } from 'lucide-react';
 import translations from './translations';
@@ -506,6 +506,7 @@ function AlbumArt({
 }
 
 function LyricsFull() {
+    const isMobile = useIsMobile();
     const { t } = translations.useTranslation();
     const [lyricsState, setLyricsState] = useState<LyricsLoadState>({ status: 'idle', lyrics: null });
     const [averageColor, setAverageColor] = useState<AverageColor | null>(null);
@@ -713,9 +714,11 @@ function LyricsFull() {
     return (
         <div className="fullscreen-lyrics" style={containerStyle} ref={containerRef}>
             <div className="full-lyrics-container-header">
-                <button className="fullscreen-lyrics" onClick={toggleFullscreen}>
-                    {isFullscreen ? <Shrink/> : <Expand/>}
-                </button>
+                {!isMobile && (
+                    <button className="fullscreen-lyrics" onClick={toggleFullscreen}>
+                        {isFullscreen ? <Shrink/> : <Expand/>}
+                    </button>
+                )}
                 <button className="minimize-lyrics" onClick={minimizeLyrics}>
                     <Minimize2/>
                 </button>

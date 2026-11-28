@@ -1,0 +1,10 @@
+{
+    "id": "devices@built-in",
+    "name": "devices",
+    "author": "built-in",
+    "version": "1.2.0",
+    "description": "Listen on different devices with OmniPlayr.",
+    "type": "frontend",
+    "min-version": "2026.11.0",
+    "min-dev-version": "2026.11.10"
+}

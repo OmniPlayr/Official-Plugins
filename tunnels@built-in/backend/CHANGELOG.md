@@ -4,6 +4,12 @@ All notable changes to `tunnels@built-in` are documented here. This changelog fo
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-11-28
+
+### Changed
+
+- Folded the tunnel setup notes into the setup instructions.
+
 ## [2.1.0] - 2026-07-06
 
 ### Changed

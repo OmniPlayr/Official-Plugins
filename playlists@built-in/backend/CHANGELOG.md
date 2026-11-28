@@ -4,6 +4,16 @@ All notable changes to `playlists@built-in` are documented here. This changelog 
 
 ## [Unreleased]
 
+## [beta-1.5.2] - 2026-11-28
+
+### Fixed
+
+- Frontend: Normalized queued track metadata and corrected the playlist browser cache types.
+
+### Changed
+
+- Backend package: Updated the shared release documentation.
+
 ## [beta-1.5.1] - 2026-11-23
 
 ### Added

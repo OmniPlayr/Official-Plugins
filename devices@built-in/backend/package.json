@@ -1,0 +1,21 @@
+{
+    "id": "devices@built-in",
+    "name": "devices",
+    "author": "built-in",
+    "version": "1.0.0",
+    "description": "View and listen on different devices with OmniPlayr.",
+    "type": "backend",
+    "repository": "https://github.com/OmniPlayr/Official-Plugins",
+    "homepage": "https://omniplayr.wokki20.nl",
+    "pythonDependencies": {
+        "zeroconf": "==0.150.0"
+    },
+    "readme": "README.md",
+    "changelog": "CHANGELOG.md",
+    "banner": "banner.png",
+    "license": "LICENSE",
+    "contributors": [
+        { "name": "wokki20", "avatar": "https://avatars.githubusercontent.com/u/105733478?v=4", "profile": "https://github.com/levkris" }
+    ],
+    "min-dev-version": "2026.6.10"
+}

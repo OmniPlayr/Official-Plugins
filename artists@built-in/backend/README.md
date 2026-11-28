@@ -2,7 +2,7 @@
 
 Adds full artist and album profile pages to OmniPlayr. Click any artist or album name in the player and instantly get a rich profile pulled from MusicBrainz, Genius, and the Cover Art Archive: biography, genres, discography, tracklists, cover art, and more.
 
-**Versions:** Backend `2.1.3` | Frontend `2.1.2`
+**Versions:** Backend `2.1.4` | Frontend `2.2.0`
 
 You can find this plugin at:
 **[https://omniplayr.wokki20.nl/packages/package/artists@built-in](https://omniplayr.wokki20.nl/packages/package/artists@built-in)**
@@ -13,7 +13,7 @@ You can find this plugin at:
 
 ### In the player
 
-Artist and album names in the player become clickable. Hovering over a name pre-fetches the profile in the background so it opens instantly when you click. Clicking navigates you to a dedicated profile page.
+Artist and album names in the player become clickable. Hovering over a name pre-fetches the profile in the background so it opens instantly when you click. Clicking navigates you to a dedicated profile page. The Track actions menu also has Go to artist and Go to album.
 
 ### Artist pages (`/artist/:artist`)
 
@@ -50,7 +50,7 @@ If you notice missing or incorrect information, submitting corrections to those 
 
 ## Requirements
 
-- OmniPlayr development version `2026.7.6` or newer
+- OmniPlayr development version `2026.11.9` or newer
 
 ### Genius API token
 

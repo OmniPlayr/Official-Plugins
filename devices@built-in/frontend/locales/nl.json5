@@ -1,0 +1,32 @@
+{
+    "devices.title": "Apparaten",
+    "devices.loading": "Apparaten laden",
+    "devices.empty": "Geen apparaten gevonden",
+    "devices.close": "Sluiten",
+    "devices.unknown": "Onbekend apparaat",
+    "devices.current.computer": "Deze computer",
+    "devices.current.phone": "Deze telefoon",
+    "devices.current.tablet": "Deze tablet",
+    "devices.current.device": "Dit apparaat",
+
+    "devices.browser": "Browser",
+    "devices.desktop": "Desktop",
+    "devices.android": "Android-apparaat",
+    "devices.browser_on_device": "{browser} op {device}",
+    "devices.browser_on_os": "{browser} op {operatingSystem}",
+
+    "devices.status.online": "Online",
+    "devices.status.idle": "Inactief",
+    "devices.status.unconnectable": "Niet beschikbaar",
+    "devices.status.playing": "Speelt af",
+    "devices.playing_on": "Speelt af op",
+
+    "devices.cast.google": "Google Cast",
+    "devices.cast.airplay": "AirPlay",
+    "devices.cast.fire_tv": "Amazon Fire TV",
+    "devices.cast.dial": "DIAL",
+    "devices.cast.dlna": "DLNA",
+    "devices.cast.sonos": "Sonos",
+
+    "devices.select_cast_device": "Selecteer een castapparaat"
+}

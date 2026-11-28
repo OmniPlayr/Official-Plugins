@@ -20,7 +20,11 @@ import {
     account
 } from './Home';
 
-const homeCache = new Map<string, HomeCache>();
+type PlaylistsCache = Pick<HomeCache, 'account' | 'accountRequest' | 'playlists' | 'songs' | 'songRequests'> & {
+    playlistsRequest?: Promise<Playlist[]>;
+};
+
+const homeCache = new Map<string, PlaylistsCache>();
 const PERSISTENT_CACHE_PREFIX = 'omniplayr:playlist-home:';
 let prunedPersistentPlaylistCaches = false;
 
@@ -59,7 +63,7 @@ function getCache() {
 
 function getPlaylists(
     userId: string | number,
-    cache: HomeCache,
+    cache: PlaylistsCache,
     onUpdate: (playlists: Playlist[], revealedCount?: number) => void,
     onUser: (user: UserAccount) => void,
     service: string

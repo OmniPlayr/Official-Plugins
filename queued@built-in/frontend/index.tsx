@@ -1,7 +1,7 @@
 import { createRoot, type Root } from "react-dom/client";
 import Queue from "./Queue";
-import { modify, registerInfobar } from "@omniplayr/plugins";
-import QueueButton from "./QueueButton";
+import { currentInfobar, modify, registerInfobar, registerPlayerAction, toggleInfoBar } from "@omniplayr/plugins";
+import { List } from "lucide-react";
 import translations from './translations';
 import NextQueue from "./NextQueue";
 
@@ -29,41 +29,6 @@ function getRoot(container: Element) {
     return root;
 }
 
-function getSideTabButtonSlot(el: Element, className: string, order: number) {
-    let group = el.querySelector(
-        ":scope > .__plugin-hook-wrapper.sidetab-button-plugin-root"
-    );
-
-    if (!group) {
-        group = document.createElement("div");
-        group.className = "__plugin-hook-wrapper sidetab-button-plugin-root";
-        el.appendChild(group);
-    }
-
-    let container = group.querySelector(`:scope > .${className}`);
-
-    if (!container) {
-        container = document.createElement("div");
-        container.className = `sidetab-button-slot ${className}`;
-        group.appendChild(container);
-    }
-
-    (container as HTMLElement).style.order = String(order);
-    return container;
-}
-
-modify(plugin_key, 'Player.plugin-target-before-volume-option', el => {
-    el.setAttribute("data-plugin-hooked", "");
-
-    const container = getSideTabButtonSlot(el, "queue-button-plugin-root", 2);
-
-    const root = getRoot(container);
-
-    if (root) {
-        root.render(<QueueButton />);
-    }
-});
-
 modify(plugin_key, 'Infobar.ib-song-more-info', (el, mount) => {
     if (!mount) return;
 
@@ -73,7 +38,16 @@ modify(plugin_key, 'Infobar.ib-song-more-info', (el, mount) => {
     position: 'end'
 });
 
-registerInfobar(plugin_key, { barId: 'queued', view: Queue })
+registerInfobar(plugin_key, { barId: 'queued', view: Queue, mobile: 'partial' });
+
+registerPlayerAction(plugin_key, {
+    id: 'queue',
+    icon: List,
+    label: () => translations.t('queue.queue'),
+    showInPlayer: true,
+    active: () => currentInfobar()?.id === plugin_key,
+    action: () => toggleInfoBar(plugin_key, 'queued'),
+});
 
 export default translations;
 export {

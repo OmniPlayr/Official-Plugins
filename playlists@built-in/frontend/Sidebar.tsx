@@ -239,6 +239,10 @@ export function queueItem(song: PlaylistSong, playlist: Playlist): PlaylistQueue
             playlistPosition: song.position,
         },
         metadata: {
+            duration: null,
+            genre: null,
+            year: null,
+            filename: null,
             ...song.metadata,
             album_art: albumArt,
         },

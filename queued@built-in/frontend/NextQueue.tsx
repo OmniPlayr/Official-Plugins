@@ -70,7 +70,7 @@ function NextQueue() {
                 <p className="next-queue-text">{t('next-queue.text')}</p>
                 <button 
                     className="next-queue-open"
-                    onClick={() => toggleInfoBar('queued@built-in', 'queue')}
+                    onClick={() => toggleInfoBar('queued@built-in', 'queued')}
                 >{t('next-queue.open')}</button>
             </div>
             <Song
